@@ -1,0 +1,40 @@
+library(readr)
+library(base)
+
+ess_raw = read_csv("~/Documents/GitHub/research/ESS9e03_1.csv")
+ess_raw= subset(ess_raw, select = c("imsmetn", "imdfetn", "impcntr", 
+                                  "imbgeco", "imueclt", "imwbcnt", 
+                                  "lrscale", "rlgblg", "rlgdnm", "blgetmg", 
+                                  "gndr", "agea", "cntry", "brncntr", "facntr", "mocntr", 
+                                  "cntbrthd", "anweight", "edulvlb", "vote"))
+
+#subset
+ess_de = ess_raw[ess_raw$cntry == "DE", ] #germany
+ess_de = ess_de[!(ess_de$brncntr > 2), ] #born in the country
+ess_de = ess_de[!(ess_de$facntr > 2), ] #father born in the country
+ess_de = ess_de[!(ess_de$mocntr > 2), ] #mother born in the country
+
+#immigration status
+ess_de$status = NA
+ess_de = transform(ess_de, status=
+                   ifelse(brncntr == "1" & facntr == "1" & mocntr =="1", "0", # native
+                   ifelse(brncntr == "1" & facntr == "2" & mocntr == "1", "1", #2nd
+                   ifelse(brncntr == "1" & facntr == "1" & mocntr == "2", "1", #2nd
+                   ifelse(brncntr == "1" & facntr == "2" & mocntr == "2", "1", #2nd
+                   ifelse(brncntr == "2" & facntr == "1" & mocntr == "1", "0", #native 
+                   ifelse(brncntr == "2" & facntr == "1" & mocntr == "2", "2", #1st
+                   ifelse(brncntr == "2" & facntr == "2" & mocntr == "1", "2", #1st
+                          "2"))))))))  #1st
+                         
+
+
+#subsetted data
+first_de = ess_de[ess_de$status == "2", ]
+native_de = ess_de[!(ess_de$status == "2"), ]
+
+# save to CSV files
+write.csv(first_de, file = "first_de.csv", row.names = FALSE)
+write.csv(native_de, file = "native_de.csv", row.names = FALSE)
+
+
+

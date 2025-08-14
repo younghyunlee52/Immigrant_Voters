@@ -1,0 +1,451 @@
+---
+title: "Regression analysis"
+author: "Sanghoon Kim-Leffingwell"
+date: "2024-05-15"
+output:
+  pdf_document: default
+  html_document: default
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(readr)
+library(base)
+library(here)
+library(dplyr)
+library(xtable)
+library(stargazer)
+library(plm)
+library(sjPlot)
+library(ggplot2)
+library(ggpubr)
+```
+
+#Data Loading and Recoding
+```{r}
+ess_ches = read.csv(here::here("data", "ess_ches.csv"))
+
+ess_ches$Christian = ifelse(ess_ches$religion == 1, 1, 0)
+ess_ches$Muslim = ifelse(ess_ches$religion == 2, 1, 0)
+
+ess_ches$imatt = NA
+ess_ches$imatt = 1/3*(ess_ches$imbgeco + ess_ches$imueclt + ess_ches$imwbcnt)
+
+ess_ches$immpol = NA
+ess_ches$immpol = 1/3*(ess_ches$impol1 + ess_ches$impol2 + ess_ches$impol3)
+```
+
+#Regression Results
+
+## Attitudes towards immigration
+
+#Table 2: Voters' Attitudes Towards Immigrants and Party Choice
+Table 2 provides results with immigrant attitudes as a main explanatory variable. 
+```{r warning=FALSE}
+
+##Immigrants make country worse or better place to live
+h3fit1 = lm(immigrate_policy~imatt*status, data=ess_ches)
+h3fit2 = lm(immigrate_policy~imatt*status + age+gender+Christian + Muslim +education, data=ess_ches)
+h3fit3 = lm(immigrate_policy~imatt*status + age+gender+
+               Christian + Muslim +education + country + factor(essround),
+             data=ess_ches)
+stargazer::stargazer(h3fit1, h3fit2, h3fit3, type="text",df=F,
+                     omit=c("country","essround"))
+
+stargazer::stargazer(h3fit1, h3fit2, h3fit3, type="latex",df=F,
+                     omit=c("country","essround"),
+                     out = here::here("Figures", "Table 2.tex"))
+```
+
+
+#Table 3: Voters' Attitudes Towards Immigration Policy and Party Choice
+This finding aligns with the broader pattern observed in Table 3, which shows that negative attitudes towards immigration policy itself similarly drive voters towards parties advocating for stricter immigration controls. 
+```{r}
+
+h3fit1 = lm(immigrate_policy~immpol*status, data=ess_ches)
+h3fit2 = lm(immigrate_policy~immpol*status + age+gender+Christian + Muslim +education, data=ess_ches)
+h3fit3 = lm(immigrate_policy~immpol*status + age+gender+
+               Christian + Muslim +education + country + factor(essround),
+             data=ess_ches)
+
+stargazer::stargazer(h3fit1, h3fit2, h3fit3, type="text",df=F,
+                     omit=c("country","essround"))
+
+stargazer::stargazer(h3fit1, h3fit2, h3fit3, type="latex", df = FALSE, 
+                     omit = c("country","essround"),
+                     out = here::here("Figures", "Table 3.tex"))
+```
+
+## Voting for Anti-Immigrant Parties 
+
+#recoding to anti-immigrant party
+```{r}
+#table(ess_ches$immigrate_policy, useNA = "always")
+
+ess_ches$anti_imm = NA
+ess_ches$anti_imm = ifelse(is.na(ess_ches$immigrate_policy), NA,
+                    ifelse(ess_ches$immigrate_policy >= 7, 1, 0))
+length(table(ess_ches$party[ess_ches$anti_imm== 1]))
+length(table(ess_ches$party[ess_ches$anti_imm== 0]))
+```
+
+#Figure 3
+```{r}
+#predicted plot for attitudes towards immigrants
+native_model = glm(anti_imm ~ imatt, data = subset(ess_ches, status == "native"), family = binomial)
+first_model = glm(anti_imm ~ imatt, data = subset(ess_ches, status == "first"), family = binomial)
+second_model = glm(anti_imm ~ imatt, data = subset(ess_ches, status == "second"), family = binomial)
+
+x_seq = seq(min(ess_ches$imatt), max(ess_ches$imatt), length.out = 100)
+
+get_predictions = function(model, x_seq) {
+  pred = predict(model, newdata = data.frame(imatt = x_seq), type = "link", se.fit = TRUE)
+  predicted_prob = plogis(pred$fit)
+  se = pred$se.fit
+  alpha = 0.05
+  z = qnorm(1 - alpha / 2)
+  lower = plogis(pred$fit - z * se)
+  upper = plogis(pred$fit + z * se)
+  data.frame(imatt = x_seq, predicted_prob = predicted_prob, lower = lower, upper = upper)
+}
+
+native_predictions = get_predictions(native_model, x_seq)
+first_predictions = get_predictions(first_model, x_seq)
+second_predictions = get_predictions(second_model, x_seq)
+
+native_predictions$status = "Native"
+first_predictions$status = "First"
+second_predictions$status = "Second"
+
+predictions = rbind(native_predictions, first_predictions, second_predictions)
+
+predicted_plot = ggplot() +
+  geom_point(data = ess_ches, aes(x = imatt, y = anti_imm, color = status), alpha = 0.5, position = position_jitter(height = 0.02)) +
+  geom_line(data = predictions, aes(x = imatt, y = predicted_prob, color = status), size = 1) +
+  geom_ribbon(data = predictions, aes(x = imatt, ymin = lower, ymax = upper, fill = status), alpha = 0.2) +
+  labs(title = "Predicted Probability of Voting for Anti-Immigrant Parties by Immigration Status",
+       x = "Attitudes towards Immigrants (0 negative – 10 positive)",
+       y = "Predicted Probability of Voting for Anti-Immigrant") +
+  scale_color_manual(values = c("Native" = "#174978", "First" = "#22a884", "Second" = "#ff2216"),
+                     name="Immigration status") +
+  scale_fill_manual(values = c("Native" = "#174978", "First" = "#22a884", "Second" = "#ff2216"),
+                    name="Immigration status")  +
+  ylim(0.05, 0.8) +
+  theme_bw() + 
+  theme(text = element_text(size=10), legend.position = "bottom")
+  
+predicted_plot
+
+ggsave(here::here("Figures", "Figure 3a_att.png"), 
+       plot = predicted_plot, width = 8, height = 6)
+
+#predicted plot attitudes towards immigration policy 
+native_model = glm(anti_imm ~ immpol, data = subset(ess_ches, status == "native"), family = binomial)
+first_model = glm(anti_imm ~ immpol, data = subset(ess_ches, status == "first"), family = binomial)
+second_model = glm(anti_imm ~ immpol, data = subset(ess_ches, status == "second"), family = binomial)
+
+x_seq = seq(min(ess_ches$immpol), max(ess_ches$immpol), length.out = 100)
+
+get_predictions = function(model, x_seq) {
+  pred = predict(model, newdata = data.frame(immpol = x_seq), type = "link", se.fit = TRUE)
+  predicted_prob = plogis(pred$fit)
+  se = pred$se.fit
+  alpha = 0.05
+  z = qnorm(1 - alpha / 2)
+  lower = plogis(pred$fit - z * se)
+  upper = plogis(pred$fit + z * se)
+  data.frame(immpol = x_seq, predicted_prob = predicted_prob, lower = lower, upper = upper)
+}
+
+native_predictions = get_predictions(native_model, x_seq)
+first_predictions = get_predictions(first_model, x_seq)
+second_predictions = get_predictions(second_model, x_seq)
+
+native_predictions$status = "Native"
+first_predictions$status = "First"
+second_predictions$status = "Second"
+
+predictions = rbind(native_predictions, first_predictions, second_predictions)
+
+predicted_plot2 = ggplot() +
+  geom_point(data = ess_ches, aes(x = immpol, y = anti_imm, color = status), alpha = 0.5, position = position_jitter(height = 0.02)) +
+  geom_line(data = predictions, aes(x = immpol, y = predicted_prob, color = status), size = 1) +
+  geom_ribbon(data = predictions, aes(x = immpol, ymin = lower, ymax = upper, fill = status), alpha = 0.2) +
+  labs(title = "Predicted Probability of Voting for Anti-Immigrant by Immigration Status",
+       x = "Attitudes towards Immigration Policies (0 negative – 3 positive)",
+       y = "Predicted Probability of Voting for Anti-Immigrant") +
+  scale_color_manual(values = c("Native" = "#174978", "First" = "#22a884", "Second" = "#ff2216"),
+                     name="Immigration status") +
+  scale_fill_manual(values = c("Native" = "#174978", "First" = "#22a884", "Second" = "#ff2216"),
+                    name="Immigration status") +
+  ylim(0.05, 0.8) +theme_bw() + 
+  theme(text = element_text(size=9), legend.position = "bottom")
+  
+predicted_plot2
+ggsave(here::here("Figures", "Figure 3b_pol.png"), 
+       plot = predicted_plot2, width = 8, height = 6)
+```
+
+#Figure 4
+```{r}
+ess_ches %>%
+  group_by(country, imatt,status) %>%
+  summarize(mean=mean(anti_imm), sd=sd(anti_imm)) -> essaggdat_anti2
+
+ggplot(essaggdat_anti2) + 
+  geom_smooth(aes(x=imatt, y=mean,color=status), method="lm",
+              linewidth=.5,se=F) +
+  facet_wrap(~country, ncol=4) + theme_bw() +
+  scale_color_brewer(palette = "Set1", name="Status",
+                     labels=c("Native", "First gen", "Second gen"))+ 
+  theme(legend.position = c(0.9,0.07),
+        legend.box.background = element_rect(colour = "black"),
+        text=element_text(size=13)) +
+  labs(x="Immigration attitude", y="Support for anti-immigration parties")
+
+ggsave(here::here("Figures", "Figure 4.png"), width=8,height=9)
+```
+
+
+
+#Appendix
+
+#Table A4: Political Ideology and Party Choice
+It presents results from regression analysis of voters' political ideologies on their party choice in terms of immigration policy.
+```{r warning=FALSE}
+# change "native" as the reference level
+ess_ches$status = as.factor(ess_ches$status)
+ess_ches$status = relevel(ess_ches$status, ref = "native")
+
+h2fit1 = lm(immigrate_policy~lrscale*status, data=ess_ches)
+h2fit2 = lm(immigrate_policy~lrscale*status + age+gender+Christian + Muslim +education,
+            data=ess_ches)
+h2fit3 = lm(immigrate_policy~lrscale*status + age+gender+
+               Christian + Muslim +education + country + factor(essround),
+             data=ess_ches)
+
+stargazer::stargazer(h2fit1, h2fit2, h2fit3, type="text",df=F,
+                     omit=c("country","essround"))
+
+stargazer::stargazer(h2fit1, h2fit2, h2fit3,
+  type = "latex", df = FALSE, omit = c("country","essround"),
+  out = here::here("Figures", "Table A4.tex"))
+```  
+
+
+
+####################
+
+
+
+
+#descriptive
+```{r}
+# Calculate averages by country and sort by the value of mean_immigrate_policy
+average_by_country <- ess_ches %>%
+  group_by(country) %>%
+  summarize(
+    mean_immigrate_policy = mean(immigrate_policy, na.rm = TRUE)
+  ) %>%
+  arrange(mean_immigrate_policy)
+
+print(average_by_country)
+
+# only immigrants
+average_by_country2 <- ess_ches %>%
+  filter(status == "first") %>%  # Subset the data
+  group_by(country) %>%
+  summarize(
+    mean_immigrate_policy2 = mean(immigrate_policy, na.rm = TRUE)
+  ) %>%
+  arrange(mean_immigrate_policy2)
+
+print(average_by_country2)
+```
+
+#Unused
+```{r warning=FALSE}
+# outcome = immigrate_policy
+h1fit5 = lm(immigrate_policy~lrscale, data=ess_ches)
+h1fit6 = lm(immigrate_policy~lrscale + age+gender+Christian + Muslim +education, data=ess_ches)
+h1fit7 = plm(immigrate_policy~lrscale + age+gender+Christian + Muslim +education, data=ess_ches, 
+              model="within", index=c("country","essround"))
+h1fit8 = lm(immigrate_policy~lrscale + age+gender+Christian + Muslim +education + country + factor(essround),
+             data=ess_ches)
+stargazer::stargazer(h1fit5, h1fit6, h1fit7,h1fit8, type="text",df=F,
+                     omit=c("country","essround"))
+
+stargazer::stargazer(h1fit5, h1fit6, h1fit7,h1fit8, type="latex",df=F,
+                     omit=c("country","essround"))
+
+summary(ess_ches$immigrate_policy)
+summary(ess_ches$lrgen)
+
+cor(ess_ches$immigrate_policy, ess_ches$lrgen, use = "complete.obs") #very high correlation
+
+table(ess_ches$religion)
+```
+
+#correlation just in case
+```{r}
+cor(ess_ches$lrgen, ess_ches$immigrate_policy, use = "complete.obs")
+cor(ess_ches$lrgen, ess_ches$lrscale, use = "complete.obs")
+cor(ess_ches$immigrate_policy, ess_ches$lrscale, use = "complete.obs")
+cor(ess_ches$immigrate_policy, ess_ches$imwbcnt, use = "complete.obs")
+#cor(ess_ches$pol_nor, ess_ches$imm_nor, use = "complete.obs")
+cor(ess_ches$immpol, ess_ches$imatt, use = "complete.obs")
+```
+
+```{r}
+#recoding anti-immigrant party (additive)
+colnames(ess_ches)
+ess_ches$antiparty = NA
+ess_ches$antiparty = 1/2*(ess_ches$immigrate_policy + ess_ches$multiculturalism)
+ess_ches$antiparty = ifelse(is.na(ess_ches$antiparty), NA,
+                    ifelse(ess_ches$antiparty > 7, 1, 0))
+table(ess_ches$antiparty, useNA = "always")
+
+#cor(ches$immigrate_policy, ches$multiculturalism, use = "complete.obs")
+#cor(ches$immigrate_policy, ches$nationalism, use = "complete.obs")
+### multiculturalism and immigration policy almost overlaps. (correlation = 0.9)
+```
+
+#Voting for Anti-Immigrant Party (regression)
+```{r}
+#attitudes towards immigrants
+h3fit1 = glm(anti_imm~imatt*status, data=ess_ches)
+h3fit2 = glm(anti_imm~imatt*status + age+gender+Christian + Muslim +education, data=ess_ches)
+h3fit3 = plm(anti_imm~imatt*status + age+gender+Christian + Muslim +education, data=ess_ches, 
+              model="within", index=c("country","essround"))
+h3fit4 = glm(anti_imm~imatt*status + age+gender+
+               Christian + Muslim +education + country + factor(essround),
+             data=ess_ches)
+
+stargazer::stargazer(h3fit1, h3fit2, h3fit3,h3fit4, type="latex",df=F,
+                     omit=c("country","essround"))
+
+#attitudes towards immigration policy
+h3fit1 = glm(anti_imm~immpol*status, data=ess_ches)
+h3fit2 = glm(anti_imm~immpol*status + age+gender+Christian + Muslim +education, data=ess_ches)
+h3fit3 = plm(anti_imm~immpol*status + age+gender+Christian + Muslim +education, data=ess_ches, 
+              model="within", index=c("country","essround"))
+h3fit4 = glm(anti_imm~immpol*status + age+gender+
+               Christian + Muslim +education + country + factor(essround),
+             data=ess_ches)
+stargazer::stargazer(h3fit1, h3fit2, h3fit3,h3fit4, type="latex",df=F,
+                     omit=c("country","essround"))
+```
+
+#Incorrect
+
+```{r}
+# Calculate the mean of immpol by country
+mean_immpol_by_country <- ess_ches %>%
+  group_by(country) %>%
+  summarise(mean_immpol = mean(immpol, na.rm = TRUE))
+
+# Show the result
+print(mean_immpol_by_country)
+
+
+mean_immpol_country = ess_ches %>%
+  group_by(country, status) %>%
+  summarise(mean_immpol = mean(immpol, na.rm = TRUE))
+
+mean_imatt_country = ess_ches %>%
+  group_by(country) %>%
+  summarise(mean_imatt = mean(imatt, na.rm = TRUE))
+
+mean_lrscale_country = ess_ches %>%
+  group_by(country) %>%
+  summarise(mean_lrscale = mean(lrscale, na.rm = TRUE))
+
+# Combine the data frames by the 'country' column and round to 2 digits
+combined_means <- mean_immpol_country %>%
+  left_join(mean_imatt_country, by = "country") %>%
+  left_join(mean_lrscale_country, by = "country") %>%
+  mutate(across(starts_with("mean_"), ~ round(.x, 2)))
+
+# Convert to LaTeX table
+latex_table <- combined_means %>%
+  knitr::kable(format = "latex", booktabs = TRUE)
+
+knitr::kable(combined_means)
+
+# Print the LaTeX code for the table
+cat(latex_table)
+
+mean(ess_ches$immpol)
+mean(ess_ches$imatt)
+mean(ess_ches$lrscale)
+
+```
+
+```{r}
+mean_immpol_by_country_status <- ess_ches %>%
+  group_by(country, status) %>%
+  summarise(mean_immpol = mean(immpol, na.rm = TRUE)) %>%
+  ungroup()
+
+mean_immpol_wide <- mean_immpol_by_country_status %>%
+  pivot_wider(names_from = status, values_from = mean_immpol)
+
+print(mean_immpol_wide)
+
+mean_immpol_wide <- mean_immpol_wide %>%
+  mutate(across(where(is.numeric), ~ round(.x, 2)))
+
+latex1 = mean_immpol_wide %>%
+  knitr::kable(format = "latex", booktabs = TRUE)
+
+cat(latex1)
+
+mean_imatt_by_country_status <- ess_ches %>%
+  group_by(country, status) %>%
+  summarise(mean_imatt = mean(imatt, na.rm = TRUE)) %>%
+  ungroup()
+
+mean_imatt_wide <- mean_imatt_by_country_status %>%
+  pivot_wider(names_from = status, values_from = mean_imatt)
+
+mean_imatt_wide <- mean_imatt_wide %>%
+  mutate(across(where(is.numeric), ~ round(.x, 2)))
+
+latex2 = mean_imatt_wide %>%
+  knitr::kable(format = "latex", booktabs = TRUE)
+
+cat(latex2)
+
+mean_lrscale_by_country_status <- ess_ches %>%
+  group_by(country, status) %>%
+  summarise(mean_lrscale = mean(lrscale, na.rm = TRUE)) %>%
+  ungroup()
+
+mean_lrscale_wide <- mean_lrscale_by_country_status %>%
+  pivot_wider(names_from = status, values_from = mean_lrscale)
+
+mean_lrscale_wide <- mean_lrscale_wide %>%
+  mutate(across(where(is.numeric), ~ round(.x, 2)))
+
+latex3 = mean_lrscale_wide %>%
+  knitr::kable(format = "latex", booktabs = TRUE)
+
+cat(latex3)
+
+mean(ess_ches$immpol[ess_ches$status == "first"])
+mean(ess_ches$imatt[ess_ches$status == "first"])
+mean(ess_ches$lrscale[ess_ches$status == "first"])
+```
+
+```{r}
+combined_means2 <- mean_immpol_wide %>%
+  left_join(mean_imatt_wide, by = "country") %>%
+  left_join(mean_lrscale_wide, by = "country") %>%
+  mutate(across(starts_with("mean_"), ~ round(.x, 2)))
+
+# Convert to LaTeX table
+latex_table <- combined_means %>%
+  knitr::kable(format = "latex", booktabs = TRUE)
+
+# Print the LaTeX code for the table
+cat(latex_table)
+```

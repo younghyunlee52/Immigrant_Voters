@@ -1,0 +1,70 @@
+library(ggplot2)
+library(reshape2)
+
+setwd("~/Documents/GitHub/Dissertation/ESS")
+first_de = read_csv("first_de.csv")
+native_de = read_csv("native_de.csv")
+
+#native 
+#anti-immigration policy: imsmetn, imdfetn, impcntr
+#immigrant-related variables: 1 (allow) - 4(no), 7= refusal, 8 = DK, 9 = no answer
+## imsmetn - Allow many/few immigrants of same race/ethnic group as  
+## imdfetn - Allow many/few immigrants of d ... ace/ethnic group from majority
+## impcntr - Allow many/few immigrants from poorer countries outside Europe 
+
+native_de = native_de[!(native_de$imsmetn > 4), ]
+native_de = native_de[!(native_de$imdfetn > 4), ]
+native_de = native_de[!(native_de$impcntr > 4), ]
+
+round(prop.table(table(native_de$imsmetn)), 2)
+round(prop.table(table(native_de$imdfetn)), 2)
+round(prop.table(table(native_de$impcntr)), 2)
+
+#anti-immigrant sentiments: imbgeco, imueclt, imwbcnt
+## imbgeco - Immigration bad or good for country's economy (0-10, 77 = refusal, 88 = DK, 99 = No answer) 
+## imueclt - Country's cultural life undermined or enriched by immigrants (0-10, 77 = refusal, 88 = DK, 99 = No answer)
+## imwbcnt - Immigrants make country worse or better place to live (0-10, 77 = refusal, 88 = DK, 99 = No answer)
+native_de = native_de[!(native_de$imbgeco > 10), ]
+native_de = native_de[!(native_de$imueclt > 10), ]
+native_de = native_de[!(native_de$imwbcnt > 10), ]
+
+round(prop.table(table(native_de$imbgeco)), 2)
+round(prop.table(table(native_de$imueclt)), 2)
+round(prop.table(table(native_de$imwbcnt)), 2)
+
+round(mean(native_de$imbgeco >= 0 & native_de$imbgeco <= 4), 3)
+round(mean(native_de$imbgeco == 5), 3)
+round(mean(native_de$imbgeco >= 6 & native_de$imbgeco <= 10), 3)
+
+round(mean(native_de$imueclt >= 0 & native_de$imueclt <= 4), 3)
+round(mean(native_de$imueclt == 5), 3)
+round(mean(native_de$imueclt >= 6 & native_de$imueclt <= 10), 3)
+
+
+round(mean(native_de$imwbcnt >= 0 & native_de$imwbcnt <= 4), 3)
+round(mean(native_de$imwbcnt == 5), 3)
+round(mean(native_de$imwbcnt >= 6 & native_de$imwbcnt <= 10), 3)
+
+## stacked bars
+melted_native_de = melt(native_de[, c("imbgeco", "imueclt", "imwbcnt")])
+melted_native_de$value = factor(melted_native_de$value, levels = rev(0:10))
+
+anti_imm = ggplot(melted_native_de, aes(y = variable, fill = factor(value))) +
+  geom_bar(position = "fill", stat = "count", width = 0.5) +  # Adjust the width as needed
+  scale_fill_manual(values = viridisLite::viridis(11)) +  # You can choose a different color scale
+  scale_y_discrete(labels = c("economy", "culture", "living")) +
+  labs(title = "Attitudes Towards Immigrants",
+       x = "Proportion",
+       y = "Are immigrants good/bad for the country?",
+       fill = "Rating") + theme_minimal() + 
+  geom_vline(xintercept = 0.5, color = "red", linetype = "dashed")  
+
+ggsave("~/Documents/GitHub/Dissertation/ESS/figures/anti_imm.png", anti_imm,
+       width = 8, height = 5)
+
+
+
+
+
+
+

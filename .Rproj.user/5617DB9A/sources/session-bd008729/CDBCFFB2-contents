@@ -1,0 +1,119 @@
+---
+title: "Immigrant voters"
+output: html_document
+date: "2022-10-08"
+---
+#Relevant Datasets
+- https://ess-search.nsd.no/en/study/bdc7c350-1029-4cb3-9d5e-53f668b8fa74
+- https://static1.squarespace.com/static/5975c9bfdb29d6a05c65209b/t/62e9612a9090ba609c4b8693/1659461930880/1999-2019_CHES_codebook.pd
+
+#packages
+```{r}
+library(readr)
+library(base)
+library(here)
+library(dplyr)
+library(xtable)
+library(stargazer)
+```
+
+#loading data
+```{r}
+ches = read.csv(here::here("data", "ches1419.csv"))
+ches = ches[ches$year == 2019, ]
+ess9 = read.csv(here::here("data", "ess9_ches.csv"))
+ess10 = read.csv(here::here("data", "ess10_ches.csv"))
+ess = rbind(ess9, ess10)
+
+table(ess$status)
+table(ess$brncntr[ess$status == "native"])
+table(ess$facntr[ess$status == "first"])
+
+table(ess10$feethngr, ess10$status, useNA = "always")
+table(ess9$livecnta)
+
+483/(483+130) #first
+13957/(13957+951) #native
+829/(829+134) #second
+408/(408+36328)
+```
+
+#data structure and merge
+```{r}
+ess = ess[ , c("party", "country", "essround", "idno", 
+               "dweight", "anweight", "pweight", "lrscale",
+                 "status", "age", "gender", "vote",
+                 "religion", "education", "impol1", "impol2",
+                  "impol3", "imbgeco", "imueclt", "imwbcnt", "stfdem" ,
+               "dscrgrp", "dscrrce", "dscrntn", "dscrrlg", "dscretn", "feethngr", "livecnta",
+               "cntbrthd")]
+
+#for some reasons, they don't match jobbik.
+unique(ess$party[ess$country == "HU"])
+unique(ches$party[ches$country == "HU"])
+ess$party[ess$party == "Jobbik" & ess$country == "HU"] = "JOBBIK"
+
+ches = rename(ches, voteshare = vote)
+ess_ches = merge(ess, ches, by = c("party", "country"), all.x = TRUE)
+ess_ches = subset(ess_ches, !is.na(party) & party != "")
+ess_ches = subset(ess_ches, !is.na(immigrate_policy))
+length(table(ess_ches$party))
+#write.csv(ess_ches,"D:/GitHub/voters_immigration/data/ess_ches.csv", row.names = FALSE)
+#write.csv(ess_ches, file = here("data", "ess_ches.csv"), row.names = FALSE)
+```
+
+```{r} 
+#find unmatched parties
+unmatched_parties = ess[!(ess$party %in% ches$party), c("party", "country")]
+unmatched_parties$count = ave(unmatched_parties$party, unmatched_parties$party, unmatched_parties$country, FUN = length)
+unique_unmatched = unique(unmatched_parties)
+unique_unmatched$count = as.numeric(unique_unmatched$count)
+
+unique_parties= unique_unmatched %>% arrange(desc(count))
+print(unique_parties)
+```
+
+```{r}
+library(dplyr)
+
+length(table(ches$party))
+# Calculate averages by country and sort by the value of mean_immigrate_policy
+average_by_country <- ches %>%
+  group_by(country) %>%
+  summarize(
+    mean_immigrate_policy = mean(immigrate_policy, na.rm = TRUE)
+  ) %>%
+  arrange(mean_immigrate_policy)
+
+# Print the sorted result
+print(average_by_country)
+
+```
+
+```{r}
+summary(ches$immigrate_policy)
+hist(ches$immigrate_policy)
+
+# Plotting histogram with y-axis as proportions
+hist(ches$immigrate_policy, freq = FALSE, 
+     main = "Party's Position on Immigration Policy",
+     xlab = "0 = strongly liberal, 10 = strongly restrictive", ylab = "Proportion")
+
+# Calculate the mean of ches$immigrate_policy
+mean_value <- mean(ches$immigrate_policy, na.rm = TRUE)
+
+# Add a vertical line for the mean
+abline(v = mean_value, col = "red", lwd = 2, lty = 2)
+
+# Add text above the vertical line for the mean value
+text(mean_value, 0.1, labels = paste("Mean =", round(mean_value, 2)), pos = 4, col = "red")
+
+table(ess_ches$status)
+
+#write.csv(ess_ches, file = here("data", "ess_sub.csv"), row.names = FALSE)
+
+```
+
+
+
+

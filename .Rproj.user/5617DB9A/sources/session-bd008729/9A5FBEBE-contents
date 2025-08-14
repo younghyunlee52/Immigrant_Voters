@@ -1,0 +1,17 @@
+% latex table generated in R 4.4.2 by xtable 1.8-4 package
+% Wed Aug 13 23:53:40 2025
+\begin{table}[ht]
+\centering
+\begin{tabular}{rrr}
+  \hline
+ & Factor1 & Factor2 \\ 
+  \hline
+imbgeco & 0.730 & 0.324 \\ 
+  imueclt & 0.793 & 0.326 \\ 
+  imwbcnt & 0.806 & 0.304 \\ 
+  impol1 & 0.314 & 0.677 \\ 
+  impol2 & 0.355 & 0.885 \\ 
+  impol3 & 0.382 & 0.755 \\ 
+   \hline
+\end{tabular}
+\end{table}

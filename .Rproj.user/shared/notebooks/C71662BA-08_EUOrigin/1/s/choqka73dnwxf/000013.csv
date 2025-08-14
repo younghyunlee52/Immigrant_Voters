@@ -1,0 +1,1 @@
+"0","ggsave(here::here(""Figures"", ""Figure A2_EU.png""), EU,width = 8, height = 4, dpi = 300)"

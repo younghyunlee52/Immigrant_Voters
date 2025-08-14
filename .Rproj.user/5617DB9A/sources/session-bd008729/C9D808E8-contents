@@ -1,0 +1,323 @@
+---
+title: "Immigrant voters"
+output: html_document
+date: "2022-10-08"
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(readr)
+library(base)
+library(here)
+library(dplyr)
+library(xtable)
+library(stargazer)
+library(plm)
+library(sjPlot)
+library(ggplot2)
+library(ggpubr)
+```
+
+#Data Loading and Recoding
+```{r}
+ess_ches = read.csv(here::here("data", "ess_ches.csv"))
+
+ess_ches$Christian = ifelse(ess_ches$religion == 1, 1, 0)
+ess_ches$Muslim = ifelse(ess_ches$religion == 2, 1, 0)
+
+ess_ches$imatt = NA
+ess_ches$imatt = 1/3*(ess_ches$imbgeco + ess_ches$imueclt + ess_ches$imwbcnt)
+
+ess_ches$immpol = NA
+ess_ches$immpol = 1/3*(ess_ches$impol1 + ess_ches$impol2 + ess_ches$impol3)
+
+```
+
+#Descriptive Statistics
+##Sample (Appendix A: Table A1)
+```{r}
+sample = as.data.frame.matrix(table(ess_ches$country, ess_ches$status))
+
+sample$total = rowSums(sample)
+
+sample = sample %>%
+  mutate(
+    native_pct  = round(native / total * 100, 2),
+    first_pct   = round(first / total * 100, 2),
+    second_pct  = round(second / total * 100, 2),
+    total_pct   = 100
+  )
+
+sample_fmt <- sample %>%
+  mutate(
+    Native      = paste0(format(native, big.mark=","), " (", native_pct, ")"),
+    FirstGen    = paste0(format(first, big.mark=","), " (", first_pct, ")"),
+    SecondGen   = paste0(format(second, big.mark=","), " (", second_pct, ")"),
+    TotalSample = paste0(format(total, big.mark=","), " (", total_pct, ")")
+  ) %>%
+  select(Native, FirstGen, SecondGen, TotalSample)
+
+status_xtable = xtable(sample_fmt, caption = "Immigrant Status by Country")
+print(status_xtable, include.rownames = TRUE, sanitize.rownames.function = identity,
+      file = here::here("Figures", "sample_summary.tex"))
+
+```
+
+## Political Party Positions on Immigration Policy
+
+#Figure 1: Average Immigration Policy Position (Map)
+
+#descriptive
+```{r}
+ches = read.csv(here::here("data", "ches.csv"))
+
+library(dplyr)
+
+table(ches$year)
+# Calculate averages by country and sort by the value of mean_immigrate_policy
+colnames(ches)
+average_by_country <- ches %>%
+  filter(year==2019) %>%
+  group_by(country) %>%
+  summarize(
+    mean_immigrate_policy = mean(immigrate_policy, na.rm = TRUE)
+  ) %>%
+  arrange(mean_immigrate_policy)
+average_by_country2 <- subset(average_by_country,!is.na(country))
+  
+library(ggplot2)
+ggplot(subset(average_by_country,!is.na(country))) + 
+  geom_bar(aes(x=reorder(country, -mean_immigrate_policy),
+               y=(mean_immigrate_policy),fill="blue"), 
+                                      stat="identity") +
+  theme_bw()
+mean(ches$immigrate_policy[ches$year == 2019], na.rm=T)
+
+# only immigrants
+average_by_country2 <- ess_ches %>%
+  filter(status == "first") %>%  # Subset the data
+  group_by(country) %>%
+  summarize(
+    mean_immigrate_policy2 = mean(immigrate_policy, na.rm = TRUE)
+  ) %>%
+  arrange(mean_immigrate_policy2)
+library(tidyverse)
+average_by_country3 <- ess_ches %>%# Subset the data
+  group_by(country) %>%
+  summarize(
+    mean_immigrate_policy2 = mean(immigrate_policy, na.rm = TRUE)
+  ) %>%
+  arrange(mean_immigrate_policy2)
+
+print(average_by_country3)
+
+ess_ches$immpol12 = (ess_ches$impol1 + ess_ches$impol2 + ess_ches$impol3)
+
+str(ess_ches$immpol12[ess_ches$status=="native"])
+str(ess_ches$immpol12[ess_ches$status=="first"])
+
+with(ess_ches, table(status, imatt))
+
+```
+
+
+```{r}
+library(rnaturalearth)
+library(rnaturalearthdata)
+library(sf)
+world <- ne_countries(scale = "medium", returnclass = "sf")
+Europe <- world[which(world$continent == "Europe"),]
+world_map = map_data("world") %>% 
+  filter(! long > 180)
+#table(world_map$region)
+
+#Europe$iso_a2_eh
+average_by_country2$iso_a2_eh <- average_by_country2$country
+average_by_country2$mean_immigrate_policy
+average_by_country2$country
+average_by_country2$region <- c("Portugal","Germany","Finland","Ireland", "Spain",
+                                "UK", "Belgium","Estonia","Sweden",
+                                "Poland","Hungary","Netherlands","France","Italy",
+                                "Denmark","Slovenia","Lithuania","Austria","Croatia",
+                                "Cyprus","Slovakia","Czech Republic","Bulgaria")
+#average_by_country3$country
+average_by_country3$iso_a2_eh <- average_by_country3$country
+average_by_country3$mean_immigrate_policy
+average_by_country3$country
+average_by_country3$region <- c("Portugal","Finland","Ireland","Estonia","Germany", "Spain", 
+                                "UK", "Belgium","Lithuania","France","Netherlands","Sweden", "Denmark","Slovenia","Cyprus","Croatia",
+                                "Italy","Belgium","Poland", "Austria","Czech Republic", "Hungary","Slovakia")
+
+
+Europe2 <- left_join(Europe, average_by_country2, by="iso_a2_eh")
+Europe4 <- left_join(Europe, average_by_country3, by="iso_a2_eh")
+Europe3 <- left_join(world_map, average_by_country2, by="region")
+Europe4 <- left_join(world_map, average_by_country3, by="region")
+
+Europe2$mean_immigrate_policy_r <-round(Europe2$mean_immigrate_policy,2)
+Europe3$mean_immigrate_policy_r <-round(Europe3$mean_immigrate_policy,2)
+Europe4$mean_immigrate_policy_r <-round(Europe4$mean_immigrate_policy,2)
+```
+
+
+```{r}
+# Figure 1
+library(ggplot2)
+ggplot(Europe4) +
+  geom_sf(aes(fill=mean_immigrate_policy2)) +
+  coord_sf(xlim = c(-20,35), ylim = c(35,72), expand = FALSE) +
+  scale_fill_gradient(low="lightblue",high="darkblue",
+                      na.value="gray95")+
+  geom_sf_label(aes(label=mean_immigrate_policy_r),fill = "white", 
+                 size=3) +
+  theme_void() +
+  theme(legend.position = "none",
+        text=element_text(size=13)) 
+ggsave("fig/europe_map2.png", width=10,height=7)
+
+# Figure A1
+ggplot(Europe2) +
+  geom_sf(aes(fill=mean_immigrate_policy2)) +
+  coord_sf(xlim = c(-20,35), ylim = c(35,72), expand = FALSE) +
+  scale_fill_gradient(low="#d1ffbd",high="darkgreen", 
+                      breaks=c(4,5,6,7), 
+                      labels=c("4 anti-immigration","5","6","7 pro-immigration"),
+                      name="",
+                      na.value="gray95")+
+  geom_sf_label(aes(label=mean_immigrate_policy_r),fill = "white", 
+                 size=3) +
+  theme_void() +
+  theme(legend.position = "right",legend.key.height = unit(.8, "cm"),
+        text=element_text(size=13)) 
+
+ggsave("fig/europe_map.png", width=10,height=7)
+```
+
+Figure 4 
+```{r}
+ggplot(essaggdat_anti2) + 
+  geom_smooth(aes(x=imatt, y=mean,color=status), method="lm",
+              linewidth=.5,se=F) +
+  facet_wrap(~country, ncol=4) + theme_bw() +
+  scale_color_brewer(palette = "Set1", name="Status",
+                     labels=c("Native", "First gen", "Second gen"))+ 
+  theme(legend.position = c(0.9,0.07),
+        legend.box.background = element_rect(colour = "black"),
+        text=element_text(size=13)) +
+  labs(x="Immigration attitude", y="Support for anti-immigration parties")
+ggsave("fig/immatt_and_antiparty_status.png", width=8,height=9)
+
+```
+
+Figure 7
+```{r}
+cohortfit1 = lm(immigrate_policy~immpol*(arrive_group) + gender+Christian + Muslim +education + country + factor(essround), data=ess_sub)
+
+cohortfit2 = lm(immigrate_policy~imatt*(arrive_group) + gender+Christian + Muslim +education + country + factor(essround), data=ess_sub)
+
+interplot::interplot(cohortfit1, var2="arrive_group",var1="immpol",point = T,
+                    ercolor="gray30", color="gray30",size=2, esize=1) +
+  theme_bw() + geom_hline(yintercept = 0, linetype="dashed", color="gray60") +
+#  theme(axis.text.x = element_text(angle = 45, hjust=1)) +
+  scale_x_continuous(breaks=seq(0,70,5),labels=seq(0,70,5))+
+  labs(x="Age at arrival", y="Coefficients") +
+  theme(text=element_text(size=14))
+ggsave("fig/condition_immpol.png", width=7,height=5)
+
+interplot::interplot(cohortfit2, var2="arrive_group",var1="imatt",point = T,
+                    ercolor="gray30", color="gray30",size=2, esize=1)+
+  theme_bw() + geom_hline(yintercept = 0, linetype="dashed", color="gray60") +
+  scale_x_continuous(breaks=seq(0,70,5),labels=seq(0,70,5))+
+  labs(x="Age at arrival", y="Coefficients")+
+  theme(text=element_text(size=14))
+ggsave("fig/condition_imatt.png", width=7,height=5)
+```
+
+
+
+#Figure A1
+
+#Appendix C: Party Categorization (Table A2)
+```{r}
+# Step 1: Aggregate the data to get the mean of immigrate_policy for each party in each country
+party_aggregated = ess_ches %>%
+  group_by(country, party) %>%
+  summarise(immigrate_policy = mean(immigrate_policy, na.rm = TRUE)) %>%
+  ungroup()
+
+# Step 2: Create a new column that combines party names with their values
+party_aggregated = party_aggregated %>%
+  mutate(party_value = paste0(party, " (", round(immigrate_policy, 2), ")"))
+
+# Step 3: Group by country
+country_party_table = party_aggregated %>%
+  group_by(country) %>%
+  summarise(parties = paste(party_value, collapse = ", ")) %>%
+  ungroup()
+
+# results
+print(country_party_table)
+latex2 = xtable(country_party_table)
+```
+
+##Individual-Level Variables
+
+#Table 1: Average Political Attitudes by Country
+
+
+#Figure 2: Distributions of Individual Preferences Across Immigration Status
+```{r}
+subplot1 = ggplot(ess_ches) + 
+  geom_density(aes(imatt, fill=status),alpha=0.5) + 
+  labs(x="Immigrant attitude", y="") +
+  theme_bw()+  theme(text=element_text(size=13))
+
+subplot2 = ggplot(ess_ches) + 
+  geom_density(aes(immpol, fill=status),alpha=0.5,adjust=1.5) + 
+  labs(x="Immigration policy attitude", y="") +
+  theme_bw()+ theme(text=element_text(size=13))
+
+subplot3 = ggplot(ess_ches, aes(group=status)) + 
+  geom_density(aes(lrscale, fill=status),alpha=0.5,adjust=1.5) + 
+  labs(x="Left-right scale", y="Density") +
+  scale_fill_discrete(labels=c("Native","First","Second"), name="Status")+
+  theme_bw() + theme(text=element_text(size=13))
+
+
+figure2 = ggarrange(subplot3,subplot1, subplot2, 
+                        ncol=3, common.legend = T, legend="bottom")
+
+ggsave(here::here("Figures", "Figure2.png"), width=12,height=4)
+```
+
+#Factor Analysis (Table A3)
+```{r}
+#six variables for outcome variables #factor analysis
+vars = ess_ches[, c("imbgeco", "imueclt", "imwbcnt", "impol1", "impol2", "impol3")]
+fa_result = factanal(vars, factors = 2, rotation = "varimax", scores = "regression")
+print(fa_result, digits = 3, cutoff = 0.3)  
+
+sink(here::here("Figures", "factor_analysis.tex"))
+print(fa_result, digits = 3, cutoff = 0.3)
+sink()
+```
+
+
+## Not Included in the Draft
+```{r}
+summary(ess_ches$immigrate_policy)
+# Plotting histogram with y-axis as proportions
+hist(ess_ches$immigrate_policy, freq = FALSE, 
+     main = "Party's Position on Immigration Policy",
+     xlab = "0 = strongly liberal, 10 = strongly restrictive", ylab = "Proportion")
+
+# Calculate the mean of ess_ches$immigrate_policy
+mean_value <- mean(ess_ches$immigrate_policy, na.rm = TRUE)
+
+# Add a vertical line for the mean
+abline(v = mean_value, col = "red", lwd = 2, lty = 2)
+
+# Add text above the vertical line for the mean value
+text(mean_value, 0.1, labels = paste("Mean =", round(mean_value, 2)), pos = 4, col = "red")
+```
+
+

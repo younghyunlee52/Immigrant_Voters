@@ -1,0 +1,640 @@
+---
+title: "Regression analysis"
+author: "Sanghoon Kim-Leffingwell"
+date: "2024-05-15"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(readr)
+library(base)
+library(here)
+library(dplyr)
+library(xtable)
+library(stargazer)
+library(plm)
+library(sjPlot)
+library(ggplot2)
+library(broom)
+```
+
+#Data Loading and Recoding
+```{r}
+ess_ches = read.csv(here::here("data", "ess_ches.csv"))
+
+ess_ches$Christian = ifelse(ess_ches$religion == 1, 1, 0)
+ess_ches$Muslim = ifelse(ess_ches$religion == 2, 1, 0)
+
+ess_ches$imatt = NA
+ess_ches$imatt = 1/3*(ess_ches$imbgeco + ess_ches$imueclt + ess_ches$imwbcnt)
+
+ess_ches$immpol = NA
+ess_ches$immpol = 1/3*(ess_ches$impol1 + ess_ches$impol2 + ess_ches$impol3)
+```
+
+#Country of Origin
+```{r}
+sort(table(ess_ches$cntbrthd[ess_ches$status == "first"]), decreasing = TRUE)
+ess_ches$origin = NA
+
+# Create a named vector for recoding
+origin_mapping <- c(
+  "1000" = "East Germany (DDR)",
+  "2000" = "USSR",
+  "3000" = "Czechoslovakia",
+  "4000" = "Yugoslavia",
+  "5000" = "East Timor",
+  "6000" = "Serbia and Montenegro",
+  "6500" = "Alien's passport",
+  "AD" = "Andorra", "AE" = "United Arab Emirates", "AF" = "Afghanistan",
+  "AG" = "Antigua and Barbuda", "AI" = "Anguilla", "AL" = "Albania",
+  "AM" = "Armenia", "AO" = "Angola", "AQ" = "Antarctica", "AR" = "Argentina",
+  "AS" = "American Samoa", "AT" = "Austria", "AU" = "Australia", "AW" = "Aruba",
+  "AX" = "Åland Islands", "AZ" = "Azerbaijan", "BA" = "Bosnia and Herzegovina",
+  "BB" = "Barbados", "BD" = "Bangladesh", "BE" = "Belgium", "BF" = "Burkina Faso",
+  "BG" = "Bulgaria", "BH" = "Bahrain", "BI" = "Burundi", "BJ" = "Benin",
+  "BL" = "Saint Barthélemy", "BM" = "Bermuda", "BN" = "Brunei Darussalam",
+  "BO" = "Bolivia", "BQ" = "Bonaire, Sint Eustatius and Saba", "BR" = "Brazil",
+  "BS" = "Bahamas", "BT" = "Bhutan", "BV" = "Bouvet Island", "BW" = "Botswana",
+  "BY" = "Belarus", "BZ" = "Belize", "CA" = "Canada", "CC" = "Cocos (Keeling) Islands",
+  "CD" = "Congo, The Democratic Republic of the", "CF" = "Central African Republic",
+  "CG" = "Congo", "CH" = "Switzerland", "CI" = "Côte d'Ivoire", "CK" = "Cook Islands",
+  "CL" = "Chile", "CM" = "Cameroon", "CN" = "China", "CO" = "Colombia",
+  "CR" = "Costa Rica", "CU" = "Cuba", "CV" = "Cabo Verde", "CW" = "Curaçao",
+  "CX" = "Christmas Island", "CY" = "Cyprus", "CZ" = "Czechia", "DE" = "Germany",
+  "DJ" = "Djibouti", "DK" = "Denmark", "DM" = "Dominica", "DO" = "Dominican Republic",
+  "DZ" = "Algeria", "EC" = "Ecuador", "EE" = "Estonia", "EG" = "Egypt",
+  "EH" = "Western Sahara", "ER" = "Eritrea", "ES" = "Spain", "ET" = "Ethiopia",
+  "FI" = "Finland", "FJ" = "Fiji", "FK" = "Falkland Islands", "FM" = "Micronesia",
+  "FO" = "Faroe Islands", "FR" = "France", "GA" = "Gabon", "GB" = "United Kingdom",
+  "GD" = "Grenada", "GE" = "Georgia", "GF" = "French Guiana", "GG" = "Guernsey",
+  "GH" = "Ghana", "GI" = "Gibraltar", "GL" = "Greenland", "GM" = "Gambia",
+  "GN" = "Guinea", "GP" = "Guadeloupe", "GQ" = "Equatorial Guinea", "GR" = "Greece",
+  "GT" = "Guatemala", "GU" = "Guam", "GW" = "Guinea-Bissau", "GY" = "Guyana",
+  "HK" = "Hong Kong", "HN" = "Honduras", "HR" = "Croatia", "HT" = "Haiti",
+  "HU" = "Hungary", "ID" = "Indonesia", "IE" = "Ireland", "IL" = "Israel",
+  "IN" = "India", "IQ" = "Iraq", "IR" = "Iran", "IS" = "Iceland", "IT" = "Italy",
+  "JM" = "Jamaica", "JO" = "Jordan", "JP" = "Japan", "KE" = "Kenya", "KG" = "Kyrgyzstan",
+  "KH" = "Cambodia", "KI" = "Kiribati", "KM" = "Comoros", "KR" = "South Korea",
+  "KW" = "Kuwait", "KZ" = "Kazakhstan", "LA" = "Laos", "LB" = "Lebanon",
+  "LC" = "Saint Lucia", "LI" = "Liechtenstein", "LK" = "Sri Lanka",
+  "LR" = "Liberia", "LS" = "Lesotho", "LT" = "Lithuania", "LU" = "Luxembourg",
+  "LV" = "Latvia", "LY" = "Libya", "MA" = "Morocco", "MD" = "Moldova",
+  "ME" = "Montenegro", "MG" = "Madagascar", "MK" = "North Macedonia",
+  "ML" = "Mali", "MM" = "Myanmar", "MN" = "Mongolia", "MT" = "Malta",
+  "MU" = "Mauritius", "MV" = "Maldives", "MX" = "Mexico", "MY" = "Malaysia",
+  "MZ" = "Mozambique", "NA" = "Namibia", "NE" = "Niger", "NG" = "Nigeria",
+  "NL" = "Netherlands", "NO" = "Norway", "NP" = "Nepal", "NZ" = "New Zealand",
+  "OM" = "Oman", "PA" = "Panama", "PE" = "Peru", "PH" = "Philippines",
+  "PK" = "Pakistan", "PL" = "Poland", "PT" = "Portugal", "QA" = "Qatar",
+  "RO" = "Romania", "RU" = "Russia", "SA" = "Saudi Arabia", "SE" = "Sweden",
+  "SG" = "Singapore", "SI" = "Slovenia", "SK" = "Slovakia", "SN" = "Senegal",
+  "SO" = "Somalia", "SY" = "Syria", "TH" = "Thailand", "TN" = "Tunisia",
+  "TR" = "Turkey", "TZ" = "Tanzania", "UA" = "Ukraine", "UG" = "Uganda",
+  "US" = "United States", "UY" = "Uruguay", "UZ" = "Uzbekistan", "VN" = "Vietnam",
+  "XK" = "Kosovo", "YE" = "Yemen", "ZA" = "South Africa", "ZW" = "Zimbabwe",
+  "2" = "Africa", "15" = "Northern Africa", "202" = "Sub-Saharan Africa", "14" = "Eastern Africa",
+  "17" = "Middle Africa", "18" = "Southern Africa","11" =  "Western Africa",
+  "19" = "Americas", "419" = "Latin America and the Caribbean", "29" = "Caribbean",
+  "13" ="CentralAmerica", "5" ="South America", "21" = "Northern America", "142" = "Asia",
+  "143" = "CentralAsia", "30" = "Eastern Asia", "35" = "South-eastern Asia",
+  "34" = "Southern Asia", "145" = "Western Asia", "150" = "Europe", 
+  "151" = "Eastern Europe", "154" = "Northern Europe", "39" = "Southern Europe",
+  "155" = "Western Europe", "9" = "Oceania", "53" = "Australia and New Zealand",
+  "54" ="Melanesia", "57" = "Micronesia", "61" = "Polynesia")
+  
+sum(ess_ches$cntbrthd[ess_ches$status == "first"] %in% 
+    c(2, 15, 202, 14, 17, 18, 11, 19, 419, 29, 13, 5, 21, 
+      143, 30, 35, 34, 145, 150, 151, 154, 39, 155, 9, 142,
+      53, 54, 57, 61))
+
+aaa <- ess_ches[!(ess_ches$status == "first" & 
+                        ess_ches$cntbrthd %in% c(2, 15, 202, 14, 17, 18, 11, 19, 419, 29, 13, 5, 21, 
+                                                 143, 30, 35, 34, 145, 150, 151, 154, 39, 155, 9, 
+                                                 142, 53, 54, 57, 61)), ]
+
+bbb = subset(aaa, status == "first")
+
+table(bbb$origin)
+# Define the list of EU countries
+eu_countries = c("Austria", "Belgium", "Bulgaria", "Croatia", "Cyprus", "Czechia", "Denmark", 
+                  "Estonia", "Finland", "France", "Germany", "Greece", "Hungary", "Ireland", 
+                  "Italy", "Latvia", "Lithuania", "Luxembourg", "Malta", "Netherlands", 
+                  "Poland", "Portugal", "Romania", "Slovakia", "Slovenia", "Spain", "Sweden")
+
+# Create a new column and assign 1 if origin is in the EU list, otherwise 0
+bbb$eu = ifelse(bbb$origin %in% eu_countries, 1, 0)
+table(bbb$eu)
+
+write.csv(bbb, file = here::here("Data", "euorigin.csv"))
+
+# Apply recoding in the dataset
+ess_ches$origin <- origin_mapping[as.character(ess_ches$cntbrthd)]
+
+# Replace missing values with "Unknown"
+ess_ches$origin[is.na(ess_ches$origin)] <- "Unknown"
+
+# Check results
+sort(table(ess_ches$cntbrthd[ess_ches$status == "first"]), decreasing = TRUE)
+sort(table(ess_ches$origin[ess_ches$status == "first"]), decreasing = TRUE)
+
+```
+
+```{r}
+ess_ches = read.csv(here::here("Data", "euorigin.csv"))
+```
+
+  
+```{r}
+ess_ches$Christian = ifelse(ess_ches$religion == 1, 1, 0)
+ess_ches$Muslim = ifelse(ess_ches$religion == 2, 1, 0)
+table(ess_ches$Muslim)
+table(ess_ches$Christian)
+table(ess_ches$religion)
+
+table(ess_ches$Christian, ess_ches$eu)
+```
+
+```{r warning=FALSE}
+# outcome = immigrate_policy
+#h1fit5 = lm(immigrate_policy~lrscale, data=ess_ches)
+h1fit6 = lm(immigrate_policy~lrscale + age+gender+Christian + Muslim +education +eu, data=ess_ches)
+#h1fit7 = plm(immigrate_policy~lrscale + age+gender+Christian + Muslim +education + eu, data=ess_ches, model="within", index=c("country","essround"))
+#h1fit8 = lm(immigrate_policy~lrscale + age+gender+Christian + Muslim +education + +eu + country + factor(essround), data=ess_ches)
+#stargazer::stargazer(h1fit5, h1fit6, h1fit7,h1fit8, type="text",df=F,                    omit=c("country","essround"))
+
+#stargazer::stargazer(h1fit5, h1fit6, h1fit7,h1fit8, type="latex",df=F, omit=c("country","essround"))
+
+# Extract coefficients and confidence intervals, excluding the intercept
+coef_data <- tidy(h1fit6, conf.int = TRUE) %>%
+  filter(term != "(Intercept)") %>%
+  mutate(term = recode(term,
+                       "lrscale" = "Political Ideology",
+                       "age" = "Age",
+                       "gender" = "Gender",
+                       "Christian" = "Christian ",
+                       "Muslim" = "Muslim",
+                       "education" = "Education ",
+                       "eu" = "EU-Origin "
+  ))
+
+# Define expanded x-axis range (adjust as needed)
+x_min <- min(coef_data$conf.low) - 0.5
+x_max <- max(coef_data$conf.high) + 0.5
+
+# Create the coefficient plot
+ggplot(coef_data, aes(x = estimate, y = reorder(term, estimate))) +
+  geom_point(size = 3) +  # Larger points for clarity
+  geom_errorbarh(aes(xmin = conf.low, xmax = conf.high), height = 0.2) +  
+  geom_vline(xintercept = 0, linetype = "dashed", color = "red") +  # Vertical line at zero
+  labs(title = "Ideology and Party Choice (Including EU and Non-EU Origins)", x = "Coefficient Estimates", y = "Variables") +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5),  # Centered and bold title
+    axis.text = element_text(size = 10),  # Increase axis text size for readability
+    axis.title = element_text(size = 10)  # Increase axis label size
+  ) +
+  xlim(x_min, x_max)  # Expand x-axis range
+
+```
+
+H3: Attitudes towards immigration policy: 
+  immigrate_policy ~ attitude_to_immigration/attitude_to_immigrants
+
+
+
+#additive index: attitudes towards immigration policy 
+```{r}
+ess_ches$immpol = NA
+ess_ches$immpol = 1/3*(ess_ches$impol1 + ess_ches$impol2 + ess_ches$impol3)
+
+#h3fit1 = lm(immigrate_policy~immpol, data=ess_ches)
+h3fit2 = lm(immigrate_policy~immpol + age+gender+Christian + Muslim +education +eu, data=ess_ches)
+#h3fit3 = plm(immigrate_policy~immpol + age+gender+Christian + Muslim +education +eu, data=ess_ches, 
+#              model="within", index=c("country","essround"))
+#h3fit4 = lm(immigrate_policy~immpol + age+gender+
+#               Christian + Muslim +education + country  +eu + factor(essround),
+#             data=ess_ches)
+stargazer::stargazer(h3fit1, h3fit2, h3fit3,h3fit4, type="text",df=F,
+                     omit=c("country","essround"))
+
+# Extract coefficients and confidence intervals, excluding the intercept
+coef_data2 <- tidy(h3fit2, conf.int = TRUE) %>%
+  filter(term != "(Intercept)") %>%
+  mutate(term = recode(term,
+                       "immpol" = "Policy Attitudes",
+                       "age" = "Age",
+                       "gender" = "Gender",
+                       "Christian" = "Christian ",
+                       "Muslim" = "Muslim",
+                       "education" = "Education ",
+                       "eu" = "EU-Origin "
+  ))
+
+# Define expanded x-axis range (adjust as needed)
+x_min <- min(coef_data$conf.low) - 0.5
+x_max <- max(coef_data$conf.high) + 0.5
+
+# Create the coefficient plot
+eu1 = ggplot(coef_data2, aes(x = estimate, y = reorder(term, estimate))) +
+  geom_point(size = 3) +  # Larger points for clarity
+  geom_errorbarh(aes(xmin = conf.low, xmax = conf.high), height = 0.2) +  
+  geom_vline(xintercept = 0, linetype = "dashed", color = "red") +  # Vertical line at zero
+  labs(title = "Policy Attitudes and Party Choice (Including EU and Non-EU Origins)", x = "Coefficient Estimates", y = "Variables") +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5),  # Centered and bold title
+    axis.text = element_text(size = 10),  # Increase axis text size for readability
+    axis.title = element_text(size = 10)  # Increase axis label size
+  ) +
+  xlim(x_min, x_max)  # Expand x-axis range
+
+
+#stargazer::stargazer(h3fit1, h3fit2, h3fit3,h3fit4, type="latex",df=F,
+#                     omit=c("country","essround"))
+#plot_model(h3fit4, type="pred",terms=c("immpol","status")) + theme_bw() 
+```
+
+#attitudes towards immigrants
+```{r warning=FALSE}
+ess_ches$imatt = NA
+ess_ches$imatt = 1/3*(ess_ches$imbgeco + ess_ches$imueclt + ess_ches$imwbcnt)
+
+##Immigrants make country worse or better place to live
+#h3fit1 = lm(immigrate_policy~imatt, data=ess_ches)
+h3fit2 = lm(immigrate_policy~imatt + age+gender+Christian + Muslim +education +eu, data=ess_ches)
+#h3fit3 = plm(immigrate_policy~imatt + age+gender+Christian + Muslim +education +eu, data=ess_ches, 
+ #             model="within", index=c("country","essround"))
+#h3fit4 = lm(immigrate_policy~imatt + age+gender+
+ #              Christian + Muslim +education  +eu + country + factor(essround),
+  #           data=ess_ches)
+#stargazer::stargazer(h3fit1, h3fit2, h3fit3,h3fit4, type="text",df=F,
+ #                    omit=c("country","essround"))
+#stargazer::stargazer(h3fit1, h3fit2, h3fit3,h3fit4, type="latex",df=F, omit=c("country","essround"))
+
+# Extract coefficients and confidence intervals, excluding the intercept
+coef_data3 <- tidy(h3fit2, conf.int = TRUE) %>%
+  filter(term != "(Intercept)") %>%
+  mutate(term = recode(term,
+                       "imatt" = "Immigrant Attitudes",
+                       "age" = "Age",
+                       "gender" = "Gender",
+                       "Christian" = "Christian ",
+                       "Muslim" = "Muslim",
+                       "education" = "Education ",
+                       "eu" = "EU-Origin "
+  ))
+
+# Define expanded x-axis range (adjust as needed)
+x_min <- min(coef_data$conf.low) - 0.5
+x_max <- max(coef_data$conf.high) + 0.5
+
+# Create the coefficient plot
+eu2 = ggplot(coef_data3, aes(x = estimate, y = reorder(term, estimate))) +
+  geom_point(size = 3) +  # Larger points for clarity
+  geom_errorbarh(aes(xmin = conf.low, xmax = conf.high), height = 0.2) +  
+  geom_vline(xintercept = 0, linetype = "dashed", color = "red") +  # Vertical line at zero
+  labs(title = "Immigrant Attitudes and Party Choice (EU and Non-EU Origins)", x = "Coefficient Estimates", y = "Variables") +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5),  # Centered and bold title
+    axis.text = element_text(size = 10),  # Increase axis text size for readability
+    axis.title = element_text(size = 10)  # Increase axis label size
+  ) +
+  xlim(x_min, x_max)  # Expand x-axis range
+
+library(gridExtra)
+grid.arrange(eu1, eu2, ncol = 1)
+```
+
+#correlation just in case
+```{r}
+cor(ess_ches$lrgen, ess_ches$immigrate_policy, use = "complete.obs")
+cor(ess_ches$lrgen, ess_ches$lrscale, use = "complete.obs")
+cor(ess_ches$immigrate_policy, ess_ches$lrscale, use = "complete.obs")
+cor(ess_ches$immigrate_policy, ess_ches$imwbcnt, use = "complete.obs")
+cor(ess_ches$pol_nor, ess_ches$imm_nor, use = "complete.obs")
+cor(ess_ches$immpol, ess_ches$imatt, use = "complete.obs")
+```
+
+#recoding to anti-immigrant party
+```{r}
+#table(ess_ches$immigrate_policy, useNA = "always")
+
+ess_ches$anti_imm = NA
+ess_ches$anti_imm = ifelse(is.na(ess_ches$immigrate_policy), NA,
+                    ifelse(ess_ches$immigrate_policy >= 7, 1, 0))
+length(table(ess_ches$party[ess_ches$anti_imm== 1]))
+length(table(ess_ches$party[ess_ches$anti_imm== 0]))
+```
+
+```{r}
+#attitudes towards immigrants
+#h3fit1 = glm(anti_imm~imatt, data=ess_ches)
+h3fit2a = glm(anti_imm~imatt + age+gender+Christian + Muslim +education +eu, data=ess_ches)
+#h3fit3 = plm(anti_imm~imatt + age+gender+Christian + Muslim +education +eu, data=ess_ches, 
+ #             model="within", index=c("country","essround"))
+#h3fit4 = glm(anti_imm~imatt + age+gender+
+ #              Christian + Muslim +education + country +eu + factor(essround),
+  #           data=ess_ches)
+
+summary(h3fit2a)
+  #stargazer::stargazer(h3fit1, h3fit2, h3fit3,h3fit4, type="latex",df=F,
+  #                   omit=c("country","essround"))
+
+# Extract coefficients and confidence intervals, converting log-odds to odds ratios
+
+
+#attitudes towards immigration policy
+h3fit1 = glm(anti_imm~immpol, data=ess_ches)
+h3fit2 = glm(anti_imm~immpol + age+gender+Christian + Muslim +education +eu, data=ess_ches)
+h3fit3 = plm(anti_imm~immpol + age+gender+Christian + Muslim +education +eu, data=ess_ches, 
+              model="within", index=c("country","essround"))
+h3fit4 = glm(anti_imm~immpol + age+gender+
+               Christian + Muslim +education  +eu+ country + factor(essround),
+             data=ess_ches)
+stargazer::stargazer(h3fit1, h3fit2, h3fit3,h3fit4, type="latex",df=F,
+                     omit=c("country","essround"))
+```
+
+
+
+#predicted plot attitudes towards immigrants
+```{r}
+
+first_model = glm(anti_imm ~ imatt, data = ess_ches, family = binomial)
+
+# Create a sequence of values for the independent variable for a smoother curve
+x_seq = seq(min(ess_ches$imatt), max(ess_ches$imatt), length.out = 100)
+
+# Function to get predictions and confidence intervals
+get_predictions = function(model, x_seq) {
+  pred = predict(model, newdata = data.frame(imatt = x_seq), type = "link", se.fit = TRUE)
+  predicted_prob = plogis(pred$fit)
+  se = pred$se.fit
+  alpha = 0.05
+  z = qnorm(1 - alpha / 2)
+  lower = plogis(pred$fit - z * se)
+  upper = plogis(pred$fit + z * se)
+  data.frame(imatt = x_seq, predicted_prob = predicted_prob, lower = lower, upper = upper)
+}
+
+# Get predictions for each group
+native_predictions = get_predictions(native_model, x_seq)
+first_predictions = get_predictions(first_model, x_seq)
+second_predictions = get_predictions(second_model, x_seq)
+
+
+# Combine predictions
+predictions = rbind(native_predictions, first_predictions, second_predictions)
+
+# Plot the data, predicted probabilities, and confidence intervals
+predicted_plot = ggplot() +
+  geom_point(data = ess_ches, aes(x = imatt, y = anti_imm, color = status), alpha = 0.5, position = position_jitter(height = 0.02)) +
+  geom_line(data = predictions, aes(x = imatt, y = predicted_prob, color = status), size = 1) +
+  geom_ribbon(data = predictions, aes(x = imatt, ymin = lower, ymax = upper, fill = status), alpha = 0.2) +
+  labs(title = "Predicted Probability of Voting for Anti-Immigrant by Immigration Status",
+       x = "Attitudes Towards Immigrants",
+       y = "Predicted Probability of Voting for Anti-Immigrant") +
+  scale_color_manual(values = c("native" = "blue", "first" = "green", "second" = "red")) +
+  scale_fill_manual(values = c("native" = "blue", "first" = "green", "second" = "red")) + ylim(0.05, 0.7)
+
+#ggsave(here("Figures", "predicted.png"), plot = predicted_plot, width = 8, height = 6)
+```
+
+
+#predicted plot attitudes towards immigration policy 
+```{r}
+# Fit logistic regression models for each group
+native_model = glm(anti_imm ~ immpol, data = subset(ess_ches, status == "native"), family = binomial)
+first_model = glm(anti_imm ~ immpol, data = subset(ess_ches, status == "first"), family = binomial)
+second_model = glm(anti_imm ~ immpol, data = subset(ess_ches, status == "second"), family = binomial)
+
+# Create a sequence of values for the independent variable for a smoother curve
+x_seq = seq(min(ess_ches$immpol), max(ess_ches$immpol), length.out = 100)
+
+# Function to get predictions and confidence intervals
+get_predictions = function(model, x_seq) {
+  pred = predict(model, newdata = data.frame(immpol = x_seq), type = "link", se.fit = TRUE)
+  predicted_prob = plogis(pred$fit)
+  se = pred$se.fit
+  alpha = 0.05
+  z = qnorm(1 - alpha / 2)
+  lower = plogis(pred$fit - z * se)
+  upper = plogis(pred$fit + z * se)
+  data.frame(immpol = x_seq, predicted_prob = predicted_prob, lower = lower, upper = upper)
+}
+
+# Get predictions for each group
+native_predictions = get_predictions(native_model, x_seq)
+first_predictions = get_predictions(first_model, x_seq)
+second_predictions = get_predictions(second_model, x_seq)
+
+# Add group labels
+native_predictions$status = "native"
+first_predictions$status = "first"
+second_predictions$status = "second"
+
+# Combine predictions
+predictions = rbind(native_predictions, first_predictions, second_predictions)
+
+# Plot the data, predicted probabilities, and confidence intervals
+predicted_plot = ggplot() +
+  geom_point(data = ess_ches, aes(x = immpol, y = anti_imm, color = status), alpha = 0.5, position = position_jitter(height = 0.02)) +
+  geom_line(data = predictions, aes(x = immpol, y = predicted_prob, color = status), size = 1) +
+  geom_ribbon(data = predictions, aes(x = immpol, ymin = lower, ymax = upper, fill = status), alpha = 0.2) +
+  labs(title = "Predicted Probability of Voting for Anti-Immigrant by Immigration Status",
+       x = "Attitudes Towards Immigration Policies",
+       y = "Predicted Probability of Voting for Anti-Immigrant") +
+  scale_color_manual(values = c("native" = "blue", "first" = "green", "second" = "red")) +
+  scale_fill_manual(values = c("native" = "blue", "first" = "green", "second" = "red")) + 
+  ylim(0.05, 0.7)
+
+#ggsave(here("Figures", "predicted_pol.png"), plot = predicted_plot, width = 8, height = 6)
+```
+
+#recoding anti-immigrant party (additive)
+```{r}
+colnames(ess_ches)
+ess_ches$antiparty = NA
+ess_ches$antiparty = 1/2*(ess_ches$immigrate_policy + ess_ches$multiculturalism)
+hist(ess_ches$antiparty)
+
+ess_ches$antiparty = ifelse(is.na(ess_ches$antiparty), NA,
+                    ifelse(ess_ches$antiparty > 7, 1, 0))
+table(ess_ches$antiparty, useNA = "always")
+
+cor(ches$immigrate_policy, ches$multiculturalism, use = "complete.obs")
+cor(ches$immigrate_policy, ches$nationalism, use = "complete.obs")
+```
+### multiculturalism and immigration policy almost overlaps. (correlation = 0.9)
+
+#predicted plot attitudes towards immigrants
+```{r}
+# Fit logistic regression models for each group
+native_model = glm(antiparty ~ imatt, data = subset(ess_ches, status == "native"), family = binomial)
+first_model = glm(antiparty ~ imatt, data = subset(ess_ches, status == "first"), family = binomial)
+second_model = glm(antiparty ~ imatt, data = subset(ess_ches, status == "second"), family = binomial)
+
+# Create a sequence of values for the independent variable for a smoother curve
+x_seq = seq(min(ess_ches$imatt), max(ess_ches$imatt), length.out = 100)
+
+# Function to get predictions and confidence intervals
+get_predictions = function(model, x_seq) {
+  pred = predict(model, newdata = data.frame(imatt = x_seq), type = "link", se.fit = TRUE)
+  predicted_prob = plogis(pred$fit)
+  se = pred$se.fit
+  alpha = 0.05
+  z = qnorm(1 - alpha / 2)
+  lower = plogis(pred$fit - z * se)
+  upper = plogis(pred$fit + z * se)
+  data.frame(imatt = x_seq, predicted_prob = predicted_prob, lower = lower, upper = upper)
+}
+
+# Get predictions for each group
+native_predictions = get_predictions(native_model, x_seq)
+first_predictions = get_predictions(first_model, x_seq)
+second_predictions = get_predictions(second_model, x_seq)
+
+# Add group labels
+native_predictions$status = "native"
+first_predictions$status = "first"
+second_predictions$status = "second"
+
+# Combine predictions
+predictions = rbind(native_predictions, first_predictions, second_predictions)
+
+# Plot the data, predicted probabilities, and confidence intervals
+predicted_plot = ggplot() +
+  geom_point(data = ess_ches, aes(x = imatt, y = antiparty, color = status), alpha = 0.5, position = position_jitter(height = 0.02)) +
+  geom_line(data = predictions, aes(x = imatt, y = predicted_prob, color = status), size = 1) +
+  geom_ribbon(data = predictions, aes(x = imatt, ymin = lower, ymax = upper, fill = status), alpha = 0.2) +
+  labs(title = "Predicted Probability of Voting for Anti-Immigrant by Immigration Status",
+       x = "Attitudes Towards Immigrants",
+       y = "Predicted Probability of Voting for Anti-Immigrant") +
+  scale_color_manual(values = c("native" = "blue", "first" = "green", "second" = "red")) +
+  scale_fill_manual(values = c("native" = "blue", "first" = "green", "second" = "red")) + ylim(0.05, 0.7)
+
+#ggsave(here("Figures", "predicted.png"), plot = predicted_plot, width = 8, height = 6)
+```
+
+
+#predicted plot attitudes towards immigration policy 
+```{r}
+# Fit logistic regression models for each group
+native_model = glm(antiparty ~ immpol, data = subset(ess_ches, status == "native"), family = binomial)
+first_model = glm(antiparty ~ immpol, data = subset(ess_ches, status == "first"), family = binomial)
+second_model = glm(antiparty ~ immpol, data = subset(ess_ches, status == "second"), family = binomial)
+
+# Create a sequence of values for the independent variable for a smoother curve
+x_seq = seq(min(ess_ches$immpol), max(ess_ches$immpol), length.out = 100)
+
+# Function to get predictions and confidence intervals
+get_predictions = function(model, x_seq) {
+  pred = predict(model, newdata = data.frame(immpol = x_seq), type = "link", se.fit = TRUE)
+  predicted_prob = plogis(pred$fit)
+  se = pred$se.fit
+  alpha = 0.05
+  z = qnorm(1 - alpha / 2)
+  lower = plogis(pred$fit - z * se)
+  upper = plogis(pred$fit + z * se)
+  data.frame(immpol = x_seq, predicted_prob = predicted_prob, lower = lower, upper = upper)
+}
+
+# Get predictions for each group
+native_predictions = get_predictions(native_model, x_seq)
+first_predictions = get_predictions(first_model, x_seq)
+second_predictions = get_predictions(second_model, x_seq)
+
+# Add group labels
+native_predictions$status = "native"
+first_predictions$status = "first"
+second_predictions$status = "second"
+
+# Combine predictions
+predictions = rbind(native_predictions, first_predictions, second_predictions)
+
+# Plot the data, predicted probabilities, and confidence intervals
+predicted_plot = ggplot() +
+  geom_point(data = ess_ches, aes(x = immpol, y = antiparty, color = status), alpha = 0.5, position = position_jitter(height = 0.02)) +
+  geom_line(data = predictions, aes(x = immpol, y = predicted_prob, color = status), size = 1) +
+  geom_ribbon(data = predictions, aes(x = immpol, ymin = lower, ymax = upper, fill = status), alpha = 0.2) +
+  labs(title = "Predicted Probability of Voting for Anti-Immigrant by Immigration Status",
+       x = "Attitudes Towards Immigration Policies",
+       y = "Predicted Probability of Voting for Anti-Immigrant") +
+  scale_color_manual(values = c("native" = "blue", "first" = "green", "second" = "red")) +
+  scale_fill_manual(values = c("native" = "blue", "first" = "green", "second" = "red")) + 
+  ylim(0.05, 0.7)
+
+#ggsave(here("Figures", "predicted_pol.png"), plot = predicted_plot, width = 8, height = 6)
+```
+
+#descriptive
+```{r}
+# Calculate averages by country and sort by the value of mean_immigrate_policy
+average_by_country <- ess_ches %>%
+  group_by(country) %>%
+  summarize(
+    mean_immigrate_policy = mean(immigrate_policy, na.rm = TRUE)
+  ) %>%
+  arrange(mean_immigrate_policy)
+
+print(average_by_country)
+
+
+# only immigrants
+average_by_country2 <- ess_ches %>%
+  filter(status == "first") %>%  # Subset the data
+  group_by(country) %>%
+  summarize(
+    mean_immigrate_policy2 = mean(immigrate_policy, na.rm = TRUE)
+  ) %>%
+  arrange(mean_immigrate_policy2)
+
+print(average_by_country2)
+```
+
+```{r}
+library(dplyr)
+
+# Step 1: Aggregate the data to get the mean (or another appropriate measure) of immigrate_policy for each party in each country
+party_aggregated <- ess_ches %>%
+  group_by(country, party) %>%
+  summarise(immigrate_policy = mean(immigrate_policy, na.rm = TRUE)) %>%
+  ungroup()
+
+# Step 2: Create a new column that combines party names with their corresponding immigration policy values
+party_aggregated <- party_aggregated %>%
+  mutate(party_value = paste0(party, " (", round(immigrate_policy, 2), ")"))
+
+# Step 3: Group by country and concatenate the party_value entries
+country_party_table <- party_aggregated %>%
+  group_by(country) %>%
+  summarise(parties = paste(party_value, collapse = ", ")) %>%
+  ungroup()
+
+# Step 4: Display the resulting table
+print(country_party_table)
+
+latex2 = xtable(country_party_table)
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

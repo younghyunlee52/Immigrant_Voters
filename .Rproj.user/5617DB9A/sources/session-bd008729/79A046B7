@@ -1,0 +1,27 @@
+{
+    "id": "79A046B7",
+    "path": "~/Documents/GitHub/Immigrant_Voters/Scripts/05_Regression.Rmd",
+    "project_path": "Scripts/05_Regression.Rmd",
+    "type": "r_markdown",
+    "hash": "3354575167",
+    "contents": "",
+    "dirty": false,
+    "created": 1755153113683.0,
+    "source_on_save": false,
+    "relative_order": 15,
+    "properties": {
+        "source_window_id": "",
+        "Source": "Source",
+        "last_setup_crc32": "bd008729bcf07840",
+        "cursorPosition": "311,0",
+        "scrollLine": "262"
+    },
+    "folds": "42|20|56|0|\n60|6|74|0|\n79|6|87|0|\n90|6|184|0|\n187|6|204|0|\n212|20|230|0|\n264|20|284|0|\n287|6|294|0|\n296|6|308|0|\n311|6|334|0|\n",
+    "lastKnownWriteTime": 1755189712,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1755189712343,
+    "read_only": false,
+    "read_only_alternatives": []
+}

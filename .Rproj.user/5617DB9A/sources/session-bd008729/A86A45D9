@@ -1,0 +1,27 @@
+{
+    "id": "A86A45D9",
+    "path": "~/Documents/GitHub/Immigrant_Voters/Scripts/01_DataCleaning.Rmd",
+    "project_path": "Scripts/01_DataCleaning.Rmd",
+    "type": "r_markdown",
+    "hash": "0",
+    "contents": "",
+    "dirty": false,
+    "created": 1755152943909.0,
+    "source_on_save": false,
+    "relative_order": 14,
+    "properties": {
+        "tempName": "Untitled1",
+        "source_window_id": "",
+        "Source": "Source",
+        "cursorPosition": "181,17",
+        "scrollLine": "168"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1755070362,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1755070362,
+    "read_only": false,
+    "read_only_alternatives": []
+}

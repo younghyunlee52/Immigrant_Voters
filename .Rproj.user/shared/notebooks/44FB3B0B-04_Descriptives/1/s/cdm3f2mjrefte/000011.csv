@@ -1,0 +1,5 @@
+"0",""
+"0","# Plotting histogram with y-axis as proportions"
+"0","hist(ess_ches$immigrate_policy, freq = FALSE, "
+"0","     main = ""Party's Position on Immigration Policy"","
+"0","     xlab = ""0 = strongly liberal, 10 = strongly restrictive"", ylab = ""Proportion"")"

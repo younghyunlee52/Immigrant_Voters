@@ -1,0 +1,27 @@
+{
+    "id": "47815592",
+    "path": "~/Documents/GitHub/Immigrant_Voters/Scripts/07_subgroup.Rmd",
+    "project_path": "Scripts/07_subgroup.Rmd",
+    "type": "r_markdown",
+    "hash": "0",
+    "contents": "",
+    "dirty": false,
+    "created": 1755185480489.0,
+    "source_on_save": false,
+    "relative_order": 22,
+    "properties": {
+        "source_window_id": "",
+        "Source": "Source",
+        "cursorPosition": "909,0",
+        "scrollLine": "898",
+        "last_setup_crc32": "bd00872925dc825f"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1755189590,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1755189590348,
+    "read_only": false,
+    "read_only_alternatives": []
+}

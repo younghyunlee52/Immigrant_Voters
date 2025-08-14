@@ -1,0 +1,15 @@
+"0","# change ""native"" as the reference level"
+"0","ess_ches$status = as.factor(ess_ches$status)"
+"0","ess_ches$status = relevel(ess_ches$status, ref = ""native"")"
+"0",""
+"0","# outcome = immigrate_policy"
+"0","h2fit1 = lm(immigrate_policy~lrscale*status, data=ess_ches)"
+"0","h2fit2 = lm(immigrate_policy~lrscale*status + age+gender+Christian + Muslim +education, data=ess_ches)"
+"0","h2fit3 = plm(immigrate_policy~lrscale*status + age+gender+Christian + Muslim +education, data=ess_ches, "
+"0","              model=""within"", index=c(""country"",""year""))"
+"0","h2fit4 = lm(immigrate_policy~lrscale*status + age+gender+"
+"0","               Christian + Muslim +education + country + factor(year),"
+"0","             data=ess_ches)"
+"2","Error in `contrasts<-`(`*tmp*`, value = contr.funs[1 + isOF[nn]]) : 
+  contrasts can be applied only to factors with 2 or more levels
+"

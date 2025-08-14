@@ -1,0 +1,89 @@
+#data
+ess_ches = read.csv(here::here("data", "ess_ches.csv"))
+
+# Load required libraries
+library(reshape2)
+library(ggplot2)
+
+#I will compare first generation immigrants versus second-gen versus natives.
+
+#religion
+prop.table(table(ess_ches$religion[ess_ches$status == "first"])) #Muslim 12.0%
+prop.table(table(ess_ches$religion[ess_ches$status == "second"])) #Muslim 4.3%
+prop.table(table(ess_ches$religion[ess_ches$status == "native"])) #Musim 0.6%
+
+#left-right ideology
+mean(ess_ches$lrscale[ess_ches$status == "first"]) #4.91
+mean(ess_ches$lrscale[ess_ches$status == "second"]) #4.77
+mean(ess_ches$lrscale[ess_ches$status == "native"]) #5.21
+
+#comparing attitudes towards immigration policy
+## natives are the least liberal 
+#0 = allow none, 1 = allow few, 2 = allow some, 3 = allow many
+
+#Allow many/few immigrants of same race/ethnic group as majority
+mean(ess_ches$impol1[ess_ches$status == "first"]) 
+mean(ess_ches$impol1[ess_ches$status == "second"])
+mean(ess_ches$impol1[ess_ches$status == "native"])
+
+#0 = allow none, 1 = allow few, 2 = allow some, 3 = allow many
+#Allow many/few immigrants of different race/ethnic group from majority
+mean(ess_ches$impol2[ess_ches$status == "first"])
+mean(ess_ches$impol2[ess_ches$status == "second"])
+mean(ess_ches$impol2[ess_ches$status == "native"])
+
+#0 = allow none, 1 = allow few, 2 = allow some, 3 = allow many
+#Allow many/few immigrants from poorer countries outside Europe
+mean(ess_ches$impol3[ess_ches$status == "first"])
+mean(ess_ches$impol3[ess_ches$status == "second"])
+mean(ess_ches$impol3[ess_ches$status == "native"])
+
+#attitudes towards immigrants
+#Immigration bad or good for country's economy
+# 0 bad - 10 good
+mean(ess_ches$imbgeco[ess_ches$status == "first"])
+mean(ess_ches$imbgeco[ess_ches$status == "second"])
+mean(ess_ches$imbgeco[ess_ches$status == "native"])
+
+#Country's cultural life undermined or enriched by immigrants
+# 0 bad - 10 good
+mean(ess_ches$imueclt[ess_ches$status == "first"])
+mean(ess_ches$imueclt[ess_ches$status == "second"])
+mean(ess_ches$imueclt[ess_ches$status == "native"])
+
+#Immigrants make country worse or better place to live
+# 0 bad - 10 good
+mean(ess_ches$imwbcnt[ess_ches$status == "first"])
+mean(ess_ches$imwbcnt[ess_ches$status == "second"])
+mean(ess_ches$imwbcnt[ess_ches$status == "native"])
+
+#party that they voted for
+#IMMIGRATE_POLICY = position on immigration policy.
+#0 = Strongly favors a liberal policy on immigration
+#10 = Strongly favors a restrictive policy on immigration
+mean(ess_ches$immigrate_policy[ess_ches$status == "first"], na.rm = TRUE)
+mean(ess_ches$immigrate_policy[ess_ches$status == "second"], na.rm = TRUE)
+mean(ess_ches$immigrate_policy[ess_ches$status == "native"], na.rm = TRUE)
+
+#IMMIGRATE_SALIENCE = importance/salience of immigration policy
+#0 = Not important at all
+#10 = Extremely important
+mean(ess_ches$immigrate_salience[ess_ches$status == "first"], na.rm = TRUE)
+mean(ess_ches$immigrate_salience[ess_ches$status == "second"], na.rm = TRUE)
+mean(ess_ches$immigrate_salience[ess_ches$status == "native"], na.rm = TRUE)
+
+#GALTAN = position of the party in 2019 in terms of their views on social and cultural values
+#0 = Libertarian/Postmaterialist
+#5 = center
+#10 = Traditional/Authoritarian
+mean(ess_ches$galtan[ess_ches$status == "first"], na.rm = TRUE)
+mean(ess_ches$galtan[ess_ches$status == "second"], na.rm = TRUE)
+mean(ess_ches$galtan[ess_ches$status == "native"], na.rm = TRUE)
+
+#LRGEN = position of the party in YEAR in terms of its overall ideological stance.
+#0 = Extreme left
+#5 = Center
+#10 = Extreme right
+mean(ess_ches$lrgen[ess_ches$status == "first"], na.rm = TRUE)
+mean(ess_ches$lrgen[ess_ches$status == "second"], na.rm = TRUE)
+mean(ess_ches$lrgen[ess_ches$status == "native"], na.rm = TRUE)

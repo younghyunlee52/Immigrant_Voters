@@ -1,0 +1,3 @@
+"0",""
+"0","# Add text above the vertical line for the mean value"
+"0","text(mean_value, 0.1, labels = paste(""Mean ="", round(mean_value, 2)), pos = 4, col = ""red"")"

@@ -1,0 +1,155 @@
+---
+title: "Immigrant voters"
+output: html_document
+date: "2022-10-08"
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(readr)
+library(base)
+library(here)
+library(dplyr)
+library(xtable)
+library(stargazer)
+library(plm)
+library(sjPlot)
+library(ggplot2)
+library(ggpubr)
+```
+
+#Data Loading and Recoding
+```{r}
+ess_ches = read.csv(here::here("data", "ess_ches.csv"))
+
+ess_ches$Christian = ifelse(ess_ches$religion == 1, 1, 0)
+ess_ches$Muslim = ifelse(ess_ches$religion == 2, 1, 0)
+
+ess_ches$imatt = NA
+ess_ches$imatt = 1/3*(ess_ches$imbgeco + ess_ches$imueclt + ess_ches$imwbcnt)
+
+ess_ches$immpol = NA
+ess_ches$immpol = 1/3*(ess_ches$impol1 + ess_ches$impol2 + ess_ches$impol3)
+
+```
+
+#Descriptive Statistics
+##Sample (Appendix A: Table A1)
+```{r}
+sample = as.data.frame.matrix(table(ess_ches$country, ess_ches$status))
+
+sample$total = rowSums(sample)
+
+sample = sample %>%
+  mutate(
+    native_pct  = round(native / total * 100, 2),
+    first_pct   = round(first / total * 100, 2),
+    second_pct  = round(second / total * 100, 2),
+    total_pct   = 100
+  )
+
+sample_fmt <- sample %>%
+  mutate(
+    Native      = paste0(format(native, big.mark=","), " (", native_pct, ")"),
+    FirstGen    = paste0(format(first, big.mark=","), " (", first_pct, ")"),
+    SecondGen   = paste0(format(second, big.mark=","), " (", second_pct, ")"),
+    TotalSample = paste0(format(total, big.mark=","), " (", total_pct, ")")
+  ) %>%
+  select(Native, FirstGen, SecondGen, TotalSample)
+
+status_xtable = xtable(sample_fmt, caption = "Immigrant Status by Country")
+print(status_xtable, include.rownames = TRUE, sanitize.rownames.function = identity,
+      file = here::here("Figures", "sample_summary.tex"))
+
+```
+
+## Political Party Positions on Immigration Policy
+
+#Figure 1: Average Immigration Policy Position (Map)
+
+#Figure A1
+
+#Appendix C: Party Categorization (Table A2)
+```{r}
+# Step 1: Aggregate the data to get the mean of immigrate_policy for each party in each country
+party_aggregated = ess_ches %>%
+  group_by(country, party) %>%
+  summarise(immigrate_policy = mean(immigrate_policy, na.rm = TRUE)) %>%
+  ungroup()
+
+# Step 2: Create a new column that combines party names with their values
+party_aggregated = party_aggregated %>%
+  mutate(party_value = paste0(party, " (", round(immigrate_policy, 2), ")"))
+
+# Step 3: Group by country
+country_party_table = party_aggregated %>%
+  group_by(country) %>%
+  summarise(parties = paste(party_value, collapse = ", ")) %>%
+  ungroup()
+
+# results
+print(country_party_table)
+latex2 = xtable(country_party_table)
+```
+
+##Individual-Level Variables
+
+#Table 1: Average Political Attitudes by Country
+
+
+#Figure 2: Distributions of Individual Preferences Across Immigration Status
+```{r}
+subplot1 = ggplot(ess_ches) + 
+  geom_density(aes(imatt, fill=status),alpha=0.5) + 
+  labs(x="Immigrant attitude", y="") +
+  theme_bw()+  theme(text=element_text(size=13))
+
+subplot2 = ggplot(ess_ches) + 
+  geom_density(aes(immpol, fill=status),alpha=0.5,adjust=1.5) + 
+  labs(x="Immigration policy attitude", y="") +
+  theme_bw()+ theme(text=element_text(size=13))
+
+subplot3 = ggplot(ess_ches, aes(group=status)) + 
+  geom_density(aes(lrscale, fill=status),alpha=0.5,adjust=1.5) + 
+  labs(x="Left-right scale", y="Density") +
+  scale_fill_discrete(labels=c("Native","First","Second"), name="Status")+
+  theme_bw() + theme(text=element_text(size=13))
+
+
+figure2 = ggarrange(subplot3,subplot1, subplot2, 
+                        ncol=3, common.legend = T, legend="bottom")
+
+ggsave(here::here("Figures", "Figure2.png"), width=12,height=4)
+```
+
+#Factor Analysis (Table A3)
+```{r}
+#six variables for outcome variables #factor analysis
+vars = ess_ches[, c("imbgeco", "imueclt", "imwbcnt", "impol1", "impol2", "impol3")]
+fa_result = factanal(vars, factors = 2, rotation = "varimax", scores = "regression")
+print(fa_result, digits = 3, cutoff = 0.3)  
+
+sink(here::here("Figures", "factor_analysis.tex"))
+print(fa_result, digits = 3, cutoff = 0.3)
+sink()
+```
+
+
+## Not Included in the Draft
+```{r}
+summary(ess_ches$immigrate_policy)
+# Plotting histogram with y-axis as proportions
+hist(ess_ches$immigrate_policy, freq = FALSE, 
+     main = "Party's Position on Immigration Policy",
+     xlab = "0 = strongly liberal, 10 = strongly restrictive", ylab = "Proportion")
+
+# Calculate the mean of ess_ches$immigrate_policy
+mean_value <- mean(ess_ches$immigrate_policy, na.rm = TRUE)
+
+# Add a vertical line for the mean
+abline(v = mean_value, col = "red", lwd = 2, lty = 2)
+
+# Add text above the vertical line for the mean value
+text(mean_value, 0.1, labels = paste("Mean =", round(mean_value, 2)), pos = 4, col = "red")
+```
+
+

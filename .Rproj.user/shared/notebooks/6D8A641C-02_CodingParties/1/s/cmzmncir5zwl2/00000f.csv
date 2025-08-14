@@ -1,0 +1,5 @@
+"0","#dataset that will use ches2019"
+"0","ches_2019 <- ches[ches$year == 2019, ]"
+"0","ches_2014 <- ches[ches$year == 2014, ]"
+"0","ess9 = ess[ess$essround %in% 9, ]"
+"0","ess10 = ess[ess$essround %in% 10, ]"

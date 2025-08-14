@@ -1,0 +1,27 @@
+{
+    "id": "7B845269",
+    "path": "~/Documents/GitHub/Immigrant_Voters/Scripts/04_Descriptives.Rmd",
+    "project_path": "Scripts/04_Descriptives.Rmd",
+    "type": "r_markdown",
+    "hash": "0",
+    "contents": "",
+    "dirty": false,
+    "created": 1755148515436.0,
+    "source_on_save": false,
+    "relative_order": 4,
+    "properties": {
+        "source_window_id": "",
+        "Source": "Source",
+        "cursorPosition": "266,27",
+        "scrollLine": "251",
+        "last_setup_crc32": "bd008729bcf07840"
+    },
+    "folds": "20|6|32|0|\n63|6|72|0|\n74|6|108|0|\n113|6|126|0|\n131|6|147|0|\n151|6|171|0|\n280|6|295|0|\n",
+    "lastKnownWriteTime": 1755155042,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1755155042762,
+    "read_only": false,
+    "read_only_alternatives": []
+}

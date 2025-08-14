@@ -1,0 +1,8 @@
+"0","#find unmatched parties"
+"0","unmatched_parties = ess[!(ess$party %in% ches$party), c(""party"", ""country"")]"
+"0","unmatched_parties$count = ave(unmatched_parties$party, unmatched_parties$party, unmatched_parties$country, FUN = length)"
+"0","unique_unmatched = unique(unmatched_parties)"
+"0","unique_unmatched$count = as.numeric(unique_unmatched$count)"
+"0",""
+"0","unique_parties= unique_unmatched %>% arrange(desc(count))"
+"0","print(unique_parties)"

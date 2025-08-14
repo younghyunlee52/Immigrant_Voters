@@ -1,0 +1,193 @@
+---
+title: "Regression analysis"
+author: "Sanghoon Kim-Leffingwell"
+date: "2024-05-15"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+ess_ches = read.csv(here::here("data", "ess_ches.csv"))
+```
+
+H1: the more right the political ideology is, the more right party individuals vote.
+  LRGEN ~ lrscale 
+  immigrate_policy ~ lrscale
+H2: Party positions on immigration policies mainly affect the vote choice among voters with an immigration background in Europe.
+  immigrate_policy ~ status*lrscale 
+H3: Attitudes towards immigrants: 
+  immigrate_policy ~ status*attitude_to_immigration/attitude_to_immigrants
+  Immigrate_policy ~ lrscale (native) ***
+  Immigrate_policy~attitude_to_immigration > lrscale (immigrants) *** 
+
+#### 
+
+H1: the more right the political ideology is, the more right party individuals vote.
+  LRGEN ~ lrscale 
+  immigrate_policy ~ lrscale
+```{r warning=FALSE}
+# outcome = lrgen
+library(plm)
+h1fit1 <- lm(lrgen~lrscale, data=ess_ches)
+h1fit2<- lm(lrgen~lrscale + age+gender+religion +education, data=ess_ches)
+h1fit3 <- plm(lrgen~lrscale + age+gender+religion +education, data=ess_ches, 
+              model="within", index=c("country","year"))
+h1fit4 <- lm(lrgen~lrscale + age+gender+religion +education + country + factor(year),
+             data=ess_ches)
+stargazer::stargazer(h1fit1, h1fit2, h1fit3,h1fit4, type="text",df=F,
+                     omit=c("country","year"))
+
+# outcome = immigrate_policy
+h1fit5 <- lm(immigrate_policy~lrscale, data=ess_ches)
+h1fit6 <- lm(immigrate_policy~lrscale + age+gender+religion +education, data=ess_ches)
+h1fit7 <- plm(immigrate_policy~lrscale + age+gender+religion +education, data=ess_ches, 
+              model="within", index=c("country","year"))
+h1fit8 <- lm(immigrate_policy~lrscale + age+gender+religion +education + country + factor(year),
+             data=ess_ches)
+stargazer::stargazer(h1fit5, h1fit6, h1fit7,h1fit8, type="text",df=F,
+                     omit=c("country","year"))
+
+summary(ess_ches$immigrate_policy)
+summary(ess_ches$lrgen)
+
+cor(ess_ches$immigrate_policy, ess_ches$lrgen, use = "complete.obs") #very high correlation
+```
+
+H2: Party positions on immigration policies mainly affect the vote choice among voters with an immigration background in Europe.
+  immigrate_policy ~ status*lrscale 
+  
+```{r warning=FALSE}
+# change "native" as the reference level
+ess_ches$status <- as.factor(ess_ches$status)
+ess_ches$status <- relevel(ess_ches$status, ref = "native")
+
+# outcome = immigrate_policy
+h2fit1 <- lm(immigrate_policy~lrscale*status, data=ess_ches)
+h2fit2 <- lm(immigrate_policy~lrscale*status + age+gender+religion +education, data=ess_ches)
+h2fit3 <- plm(immigrate_policy~lrscale*status + age+gender+religion +education, data=ess_ches, 
+              model="within", index=c("country","year"))
+h2fit4 <- lm(immigrate_policy~lrscale*status + age+gender+
+               religion +education + country + factor(year),
+             data=ess_ches)
+summary(h2fit1); summary(h2fit2); summary(h2fit3)
+
+stargazer::stargazer(h2fit1, h2fit2, h2fit3,h2fit4, type="text",df=F,
+                     omit=c("country","year"))
+
+library(sjPlot)
+library(ggplot2)
+plot_model(h2fit4, type="pred",terms=c("lrscale","status")) + theme_bw()
+```  
+  
+H3: Attitudes towards immigration policy: 
+  immigrate_policy ~ status*attitude_to_immigration/attitude_to_immigrants
+
+#normalizing attitudes towards policies/immigrants (PC)
+```{r}
+# impol1 to impol3: allow immigrants from ... 
+# 0 allow none --> 3: allow many (higher values more favorable to immigration)
+
+#PCA 
+scores <- rep(NA, nrow(ess_ches))
+
+# Perform PCA on cleaned data
+library(FactoMineR)
+attpol_df <- na.omit(ess_ches[, c("impol1", "impol2", "impol3")])
+pca_result <- PCA(attpol_df, graph = FALSE)
+
+# Assign scores only to rows that were included in PCA
+scores[!is.na(ess_ches$impol1) & !is.na(ess_ches$impol2) & !is.na(ess_ches$impol3)] <- pca_result$ind$coord[, 1]
+
+# Add scores to the data frame
+ess_ches$attpol <- scores
+summary(ess_ches$attpol)
+
+# Normalize score between 0 and 1
+ess_ches <- ess_ches %>%
+  mutate(Score_min = min(attpol, na.rm = TRUE),
+         Score_max = max(attpol, na.rm = TRUE),
+         pol_nor = (attpol - Score_min) / (Score_max - Score_min)) %>%
+  select(-Score_min, -Score_max)
+summary(ess_ches$pol_nor)
+
+#imbgeco: bad/good for economy
+#imueclt: cultural life bad/good
+#imwbcnt: country better or worse to live?
+#0 bad --> 10: good: higher values are pro-immigrants
+
+#PCA 
+scores <- rep(NA, nrow(ess_ches))
+
+# Perform PCA on cleaned data
+library(FactoMineR)
+attimm_df <- na.omit(ess_ches[, c("imbgeco", "imueclt", "imwbcnt")])
+pca_result <- PCA(attimm_df, graph = FALSE)
+
+# Assign scores only to rows that were included in PCA
+scores[!is.na(ess_ches$imbgeco) & !is.na(ess_ches$imueclt) & !is.na(ess_ches$imwbcnt)] <- pca_result$ind$coord[, 1]
+
+# Add scores to the data frame
+ess_ches$attimm <- scores
+summary(ess_ches$attimm)
+
+# Normalize score between 0 and 1
+ess_ches <- ess_ches %>%
+  mutate(Score_min = min(attimm, na.rm = TRUE),
+         Score_max = max(attimm, na.rm = TRUE),
+         imm_nor = (attimm - Score_min) / (Score_max - Score_min)) %>%
+  select(-Score_min, -Score_max)
+summary(ess_ches$imm_nor)
+```
+
+#attitudes towards immigration policy
+```{r warning=FALSE}
+h3fit1 <- lm(immigrate_policy~pol_nor*status, data=ess_ches)
+h3fit2 <- lm(immigrate_policy~pol_nor*status + age+gender+religion +education, data=ess_ches)
+h3fit3 <- plm(immigrate_policy~pol_nor*status + age+gender+religion +education, data=ess_ches, 
+              model="within", index=c("country","year"))
+h3fit4 <- lm(immigrate_policy~pol_nor*status + age+gender+
+               religion +education + country + factor(year),
+             data=ess_ches)
+stargazer::stargazer(h3fit1, h3fit2, h3fit3,h3fit4, type="text",df=F,
+                     omit=c("country","year"))
+
+plot_model(h3fit4, type="pred",terms=c("pol_nor","status")) + theme_bw() 
+
+
+```
+#attitudes towards immigrants
+  
+```{r warning=FALSE}
+##Immigrants make country worse or better place to live
+h3fit1 <- lm(immigrate_policy~imm_nor*status, data=ess_ches)
+h3fit2 <- lm(immigrate_policy~imm_nor*status + age+gender+religion +education, data=ess_ches)
+h3fit3 <- plm(immigrate_policy~imm_nor*status + age+gender+religion +education, data=ess_ches, 
+              model="within", index=c("country","year"))
+h3fit4 <- lm(immigrate_policy~imm_nor*status + age+gender+
+               religion +education + country + factor(year),
+             data=ess_ches)
+stargazer::stargazer(h3fit1, h3fit2, h3fit3,h3fit4, type="text",df=F,
+                     omit=c("country","year"))
+
+plot_model(h3fit4, type="pred",terms=c("imm_nor","status")) + theme_bw() 
+```
+
+
+
+#correlation just in case
+```{r}
+cor(ess_ches$lrgen, ess_ches$immigrate_policy, use = "complete.obs")
+cor(ess_ches$lrgen, ess_ches$lrscale, use = "complete.obs")
+cor(ess_ches$immigrate_policy, ess_ches$lrscale, use = "complete.obs")
+cor(ess_ches$immigrate_policy, ess_ches$imwbcnt, use = "complete.obs")
+cor(ess_ches$pol_nor, ess_ches$imm_nor, use = "complete.obs")
+```
+
+
+
+

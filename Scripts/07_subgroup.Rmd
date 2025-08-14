@@ -1,0 +1,934 @@
+---
+title: "Immigrant voters"
+output: html_document
+date: "2022-10-08"
+---
+
+#Subgroup Analysis
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(readr)
+library(base)
+library(here)
+library(dplyr)
+library(xtable)
+library(stargazer)
+library(plm)
+library(sjPlot)
+library(ggplot2)
+library(patchwork)
+library(ggpubr)
+library(broom)
+library(forcats)  # For reordering the terms
+```
+
+#Data Loading and Recoding
+```{r}
+ess_ches = read.csv(here::here("data", "ess_ches.csv"))
+
+ess_ches$Christian = ifelse(ess_ches$religion == 1, 1, 0)
+ess_ches$Muslim = ifelse(ess_ches$religion == 2, 1, 0)
+
+ess_ches$imatt = NA
+ess_ches$imatt = 1/3*(ess_ches$imbgeco + ess_ches$imueclt + ess_ches$imwbcnt)
+
+ess_ches$immpol = NA
+ess_ches$immpol = 1/3*(ess_ches$impol1 + ess_ches$impol2 + ess_ches$impol3)
+
+subgroup = subset(ess_ches, status == "first")
+native = subset(ess_ches, status == "native")
+subgroup = subset(subgroup, livecnta != 9999)
+native = subset(native, livecnta != 9999)
+native = native[!is.na(native$livecnta), ]
+
+subgroup = subgroup[!is.na(subgroup$livecnta), ]
+```
+
+```{r}
+subgroup$arrive = ifelse(subgroup$essround == 9,
+                         subgroup$age - (2018- subgroup$livecnta),
+                         ifelse(subgroup$essround == 10,
+                                subgroup$age - (2020 - subgroup$livecnta), NA))
+
+subgroup = subset(subgroup, arrive >= 0)
+
+subgroup$anti_imm = NA
+subgroup$anti_imm = ifelse(is.na(subgroup$immigrate_policy), NA,
+                    ifelse(subgroup$immigrate_policy >= 7, 1, 0))
+
+native$anti_imm = NA
+native$anti_imm = ifelse(is.na(native$immigrate_policy), NA,
+                    ifelse(native$immigrate_policy >= 7, 1, 0))
+```
+
+#cut off as 6,10,14, 18
+```{r}
+young6 = subset(subgroup, arrive<= 6)
+old6 = subset(subgroup, arrive> 6)
+
+young10 = subset(subgroup, arrive<= 10)
+old10 = subset(subgroup, arrive> 10)
+
+young14 = subset(subgroup, arrive<= 14)
+old14 = subset(subgroup, arrive> 14)
+
+young18 = subset(subgroup, arrive<= 18)
+old18 = subset(subgroup, arrive> 18)
+```
+
+We decided to use cutoff at 10 for our main subgroup analysis. But we also include other cutoffs in the appendix as robustness check. 
+
+# Figure A3
+```{r}
+young1 <- lm(immigrate_policy ~ lrscale + age + gender + Christian + Muslim + education, data = young10)
+
+old1 <- lm(immigrate_policy ~ lrscale + age + gender + Christian + Muslim + education, data = old10)
+
+native1 <- lm(immigrate_policy ~ lrscale + age + gender + Christian + Muslim + education, data = native)
+
+young_tidy <- tidy(young1) %>% 
+    filter(term != "(Intercept)") %>% 
+    mutate(Group = "Young Arrival")
+
+old_tidy <- tidy(old1) %>% 
+    filter(term != "(Intercept)") %>% 
+    mutate(Group = "Late Arrival")
+
+native_tidy <- tidy(native1) %>% 
+    filter(term != "(Intercept)") %>% 
+    mutate(Group = "Native")
+
+young_ci <- confint(young1) %>% 
+    as.data.frame() %>%
+    filter(row.names(.) != "(Intercept)") %>% 
+    rename(Lower_CI = `2.5 %`, Upper_CI = `97.5 %`)
+
+old_ci <- confint(old1) %>% 
+    as.data.frame() %>%
+    filter(row.names(.) != "(Intercept)") %>% 
+    rename(Lower_CI = `2.5 %`, Upper_CI = `97.5 %`)
+
+native_ci <- confint(native1) %>% 
+    as.data.frame() %>%
+    filter(row.names(.) != "(Intercept)") %>% 
+    rename(Lower_CI = `2.5 %`, Upper_CI = `97.5 %`)
+
+young_data <- cbind(young_tidy, young_ci)
+old_data <- cbind(old_tidy, old_ci)
+native_data = cbind(native_tidy, native_ci)
+
+data <- bind_rows(young_data, old_data, native_data)
+
+data <- data %>%
+    mutate(Group = factor(Group, levels = c("Native", "Young Arrival", "Late Arrival" ))) %>%
+    mutate(term = recode(term, "lrscale" = "Political Ideology",
+                         "age" = "Age",
+                         "gender" = "Gender",
+                         "Christian" = "Christian",
+                         "Muslim" = "Muslim",
+                         "education" = "Education"))
+
+ggplot(data, aes(x = estimate, y = term, shape = Group)) +
+    geom_point(size = 3, position = position_dodge(width = 0.5)) +
+    geom_errorbarh(aes(xmin = Lower_CI, xmax = Upper_CI), height = 0.2, position = position_dodge(width = 0.5)) +
+    geom_vline(xintercept = 0, linetype = "dashed", color = "gray") +
+    labs(title ="Ideology and Party Choice (Age 10 Cutoff)", 
+         x = "Coefficient Estimates",
+         y = "") +
+    theme_minimal() +
+    theme(legend.position = "bottom",
+        plot.title = element_text(hjust = 0.5)) +
+    scale_shape_manual(values = c("Young Arrival" = 16, "Late Arrival" = 17,
+                                  "Native" = 18))
+ggsave(here::here("Figures", "Figure A3_Ideology.png"), width=9,height=4)
+
+```
+
+#Figure 5
+Young arrivals with negative attitudes are more likely to support restrictive policies, reflecting stronger alignment iwth anti-immigration positions. 
+```{r}
+young1 <- lm(immigrate_policy ~ immpol + age + gender + Christian + Muslim + education, data = young10)
+old1 <- lm(immigrate_policy ~ immpol + age + gender + Christian + Muslim + education, data = old10)
+native1 <- lm(immigrate_policy ~ immpol + age + gender + Christian + Muslim + education, data = native)
+
+young_tidy <- tidy(young1) %>% 
+    filter(term != "(Intercept)") %>% 
+    mutate(Group = "Young Arrival")
+
+old_tidy <- tidy(old1) %>% 
+    filter(term != "(Intercept)") %>% 
+    mutate(Group = "Late Arrival")
+
+native_tidy <- tidy(native1) %>% 
+    filter(term != "(Intercept)") %>% 
+    mutate(Group = "Native")
+
+young_ci <- confint(young1) %>% 
+    as.data.frame() %>%
+    filter(row.names(.) != "(Intercept)") %>% 
+    rename(Lower_CI = `2.5 %`, Upper_CI = `97.5 %`)
+
+old_ci <- confint(old1) %>% 
+    as.data.frame() %>%
+    filter(row.names(.) != "(Intercept)") %>% 
+    rename(Lower_CI = `2.5 %`, Upper_CI = `97.5 %`)
+
+native_ci <- confint(native1) %>% 
+    as.data.frame() %>%
+    filter(row.names(.) != "(Intercept)") %>% 
+    rename(Lower_CI = `2.5 %`, Upper_CI = `97.5 %`)
+
+young_data <- cbind(young_tidy, young_ci)
+old_data <- cbind(old_tidy, old_ci)
+native_data <- cbind(native_tidy, native_ci)
+
+data <- bind_rows(young_data, old_data, native_data)
+
+data <- data %>%
+    mutate(Group = factor(Group, levels = c("Native", "Young Arrival", "Late Arrival" ))) %>%  # Reorder Group
+    mutate(term = recode(term, "immpol" = "Immigration Attitude",
+                         "age" = "Age",
+                         "gender" = "Gender",
+                         "Christian" = "Christian",
+                         "Muslim" = "Muslim",
+                         "education" = "Education")) %>%
+      mutate(term = factor(term, levels = c("Age", "Gender", "Education",
+                                            "Christian", "Muslim",  "Immigration Attitude")))  # Explicitly set term order
+
+
+a = ggplot(data, aes(x = estimate, y = term, shape = Group)) +
+    geom_point(size = 3, position = position_dodge(width = 0.5)) +
+    geom_errorbarh(aes(xmin = Lower_CI, xmax = Upper_CI), height = 0.2, position = position_dodge(width = 0.5)) +
+    geom_vline(xintercept = 0, linetype = "dashed", color = "gray") +
+    labs(title = "(a) Immigration Policy", 
+         x = "Coefficient Estimates",
+         y ="") +
+    theme_minimal() +
+    theme(legend.position = "bottom",
+        plot.title = element_text(hjust = 0.5)) +
+    scale_shape_manual(values = c("Young Arrival" = 16, "Late Arrival" = 17,
+                                  "Native" = 18))
+
+
+young1 <- lm(immigrate_policy ~ imatt + age + gender + Christian + Muslim + education, data = young10)
+old1 <- lm(immigrate_policy ~ imatt + age + gender + Christian + Muslim + education, data = old10)
+native1 <- lm(immigrate_policy ~ imatt + age + gender + Christian + Muslim + education, data = native)
+
+young_tidy <- tidy(young1) %>% 
+    filter(term != "(Intercept)") %>% 
+    mutate(Group = "Young Arrival")
+
+old_tidy <- tidy(old1) %>% 
+    filter(term != "(Intercept)") %>% 
+    mutate(Group = "Late Arrival")
+
+native_tidy <- tidy(native1) %>% 
+    filter(term != "(Intercept)") %>% 
+    mutate(Group = "Native")
+
+young_ci <- confint(young1) %>% 
+    as.data.frame() %>%
+    filter(row.names(.) != "(Intercept)") %>% 
+    rename(Lower_CI = `2.5 %`, Upper_CI = `97.5 %`)
+
+old_ci <- confint(old1) %>% 
+    as.data.frame() %>%
+    filter(row.names(.) != "(Intercept)") %>% 
+    rename(Lower_CI = `2.5 %`, Upper_CI = `97.5 %`)
+
+native_ci <- confint(native1) %>% 
+    as.data.frame() %>%
+    filter(row.names(.) != "(Intercept)") %>% 
+    rename(Lower_CI = `2.5 %`, Upper_CI = `97.5 %`)
+
+young_data <- cbind(young_tidy, young_ci)
+old_data <- cbind(old_tidy, old_ci)
+native_data <- cbind(native_tidy, native_ci)
+
+
+data <- bind_rows(young_data, old_data, native_data)
+
+
+data <- data %>%
+    mutate(Group = factor(Group, levels = c("Native", "Young Arrival", "Late Arrival" ))) %>%  # Reorder Group
+    mutate(term = recode(term, "imatt" = "Immigrant Attitude",
+                         "age" = "Age",
+                         "gender" = "Gender",
+                         "Christian" = "Christian",
+                         "Muslim" = "Muslim",
+                         "education" = "Education"))%>%
+      mutate(term = factor(term, levels = c("Age", "Gender", "Education",
+                                            "Christian", "Muslim",  "Immigrant Attitude")))  # Explicitly set term order
+
+
+
+b = ggplot(data, aes(x = estimate, y = term, shape = Group)) +
+    geom_point(size = 3, position = position_dodge(width = 0.5)) +
+    geom_errorbarh(aes(xmin = Lower_CI, xmax = Upper_CI), height = 0.2, position = position_dodge(width = 0.5)) +
+    geom_vline(xintercept = 0, linetype = "dashed", color = "gray") +
+    labs(title = "(b) Immigrants", 
+         x = "Coefficient Estimates",
+         y ="") +
+    theme_minimal() +
+    theme(legend.position = "bottom",
+        plot.title = element_text(hjust = 0.5)) +
+    scale_shape_manual(values = c("Young Arrival" = 16, "Late Arrival" = 17, 
+                                  "Native" = 18))
+
+a <- a + theme(axis.text.y = element_text(size = 7))
+b <- b + theme(axis.text.y = element_text(size = 7), legend.position = "none")
+
+figure5 <- a + b + plot_layout(ncol = 2)
+
+ggsave(here::here("Figures", "Figure 5_Policy.png"), width=9,height=4)
+```
+
+# Figure 6
+This patterns remain consistent when examining support for anti-immigrant parties, as shown in Figure 6. The coefficient estimates for young arrivals are closer to those of natives than late arrivals. 
+```{r}
+young1 <- lm(anti_imm ~ immpol + age + gender + Christian + Muslim + education, data = young10)
+old1 <- lm(anti_imm ~ immpol + age + gender + Christian + Muslim + education, data = old10)
+native1 <- lm(anti_imm ~ immpol + age + gender + Christian + Muslim + education, data = native)
+
+young_tidy <- tidy(young1) %>% 
+    filter(term != "(Intercept)") %>% 
+    mutate(Group = "Young Arrival")
+
+old_tidy <- tidy(old1) %>% 
+    filter(term != "(Intercept)") %>% 
+    mutate(Group = "Late Arrival")
+
+native_tidy <- tidy(native1) %>% 
+    filter(term != "(Intercept)") %>% 
+    mutate(Group = "Native")
+
+young_ci <- confint(young1) %>% 
+    as.data.frame() %>%
+    filter(row.names(.) != "(Intercept)") %>% 
+    rename(Lower_CI = `2.5 %`, Upper_CI = `97.5 %`)
+
+old_ci <- confint(old1) %>% 
+    as.data.frame() %>%
+    filter(row.names(.) != "(Intercept)") %>% 
+    rename(Lower_CI = `2.5 %`, Upper_CI = `97.5 %`)
+
+native_ci <- confint(native1) %>% 
+    as.data.frame() %>%
+    filter(row.names(.) != "(Intercept)") %>% 
+    rename(Lower_CI = `2.5 %`, Upper_CI = `97.5 %`)
+
+
+young_data <- cbind(young_tidy, young_ci)
+old_data <- cbind(old_tidy, old_ci)
+native_data <- cbind(native_tidy, native_ci)
+
+
+data <- bind_rows(young_data, old_data, native_data)
+
+data <- data %>%
+    mutate(Group = factor(Group, levels = c("Native", "Young Arrival", "Late Arrival" ))) %>%
+    mutate(term = recode(term, "immpol" = "Immigration Attitude",
+                         "age" = "Age",
+                         "gender" = "Gender",
+                         "Christian" = "Christian",
+                         "Muslim" = "Muslim",
+                         "education" = "Education")) %>%
+      mutate(term = factor(term, levels = c("Age", "Gender", "Education",
+                                            "Christian", "Muslim",  "Immigration Attitude")))  # Explicitly set term order
+
+
+
+a = ggplot(data, aes(x = estimate, y = term, shape = Group)) +
+    geom_point(size = 3, position = position_dodge(width = 0.5)) +
+    geom_errorbarh(aes(xmin = Lower_CI, xmax = Upper_CI), height = 0.2, position = position_dodge(width = 0.5)) +
+    geom_vline(xintercept = 0, linetype = "dashed", color = "gray") +
+    labs(title = "(a) Immigration Policy", 
+         x = "Coefficient Estimates",
+         y ="") +
+    theme_minimal() +
+    theme(legend.position = "bottom",
+        plot.title = element_text(hjust = 0.5)) +
+    scale_shape_manual(values = c("Young Arrival" = 16, "Late Arrival" = 17,
+                                  "Native" = 18))
+
+
+young1 <- lm(anti_imm ~ imatt + age + gender + Christian + Muslim + education, data = young10)
+old1 <- lm(anti_imm ~ imatt + age + gender + Christian + Muslim + education, data = old10)
+native1 <- lm(anti_imm ~ imatt + age + gender + Christian + Muslim + education, data = native)
+
+
+young_tidy <- tidy(young1) %>% 
+    filter(term != "(Intercept)") %>% 
+    mutate(Group = "Young Arrival")
+
+old_tidy <- tidy(old1) %>% 
+    filter(term != "(Intercept)") %>% 
+    mutate(Group = "Late Arrival")
+
+native_tidy <- tidy(native1) %>% 
+    filter(term != "(Intercept)") %>% 
+    mutate(Group = "Native")
+
+young_ci <- confint(young1) %>% 
+    as.data.frame() %>%
+    filter(row.names(.) != "(Intercept)") %>% 
+    rename(Lower_CI = `2.5 %`, Upper_CI = `97.5 %`)
+
+old_ci <- confint(old1) %>% 
+    as.data.frame() %>%
+    filter(row.names(.) != "(Intercept)") %>% 
+    rename(Lower_CI = `2.5 %`, Upper_CI = `97.5 %`)
+
+native_ci <- confint(native1) %>% 
+    as.data.frame() %>%
+    filter(row.names(.) != "(Intercept)") %>% 
+    rename(Lower_CI = `2.5 %`, Upper_CI = `97.5 %`)
+
+young_data <- cbind(young_tidy, young_ci)
+old_data <- cbind(old_tidy, old_ci)
+native_data <- cbind(native_tidy, native_ci)
+
+data <- bind_rows(young_data, old_data, native_data)
+
+data <- data %>%
+    mutate(Group = factor(Group, levels =c("Native", "Young Arrival", "Late Arrival" ))) %>%
+    mutate(term = recode(term, "imatt" = "Immigrant Attitude",
+                         "age" = "Age",
+                         "gender" = "Gender",
+                         "Christian" = "Christian",
+                         "Muslim" = "Muslim",
+                         "education" = "Education"))%>%
+      mutate(term = factor(term, levels = c("Age", "Gender", "Education",
+                                            "Christian", "Muslim",  "Immigrant Attitude")))  # Explicitly set term order
+
+b = ggplot(data, aes(x = estimate, y = term, shape = Group)) +
+    geom_point(size = 3, position = position_dodge(width = 0.5)) +
+    geom_errorbarh(aes(xmin = Lower_CI, xmax = Upper_CI), height = 0.2, position = position_dodge(width = 0.5)) +
+    geom_vline(xintercept = 0, linetype = "dashed", color = "gray") +
+    labs(title = "(b) Immigrants", 
+         x = "Coefficient Estimates",
+         y ="") +
+    theme_minimal() +
+    theme(legend.position = "bottom",
+        plot.title = element_text(hjust = 0.5)) +
+    scale_shape_manual(values = c("Young Arrival" = 16, "Late Arrival" = 17,
+                                  "Native" = 18))
+
+a <- a + theme(axis.text.y = element_text(size = 7))
+b <- b + theme(axis.text.y = element_text(size = 7), legend.position = "none")
+
+figure6 <- a + b +  plot_layout(ncol = 2)
+ggsave(here::here("Figures", "Figure 6_antiparty.png"), width=9,height=4)
+```
+
+# Figure 7
+```{r}
+ess_sub = ess_ches %>% filter(status=="first") 
+ess_sub$livecnta[ess_sub$livecnta>2020] <-NA
+ess_sub$arrive = ifelse(ess_sub$essround == 9,
+                         ess_sub$age - (2018- ess_sub$livecnta),
+                         ifelse(ess_sub$essround == 10,
+                                ess_sub$age - (2020 - ess_sub$livecnta), NA))
+
+ess_sub$arrive[ess_sub$arrive==-7] <- NA
+
+ess_sub$arrive_group <-  cut(ess_sub$arrive, breaks=seq(0,75,5), labels=seq(0,70,5))
+ess_sub$arrive_group <- as.numeric(as.character(ess_sub$arrive_group))
+
+cohortfit1 = lm(immigrate_policy~immpol*(arrive_group) + gender+Christian + Muslim +education + country + factor(essround), data=ess_sub)
+
+cohortfit2 = lm(immigrate_policy~imatt*(arrive_group) + gender+Christian + Muslim +education + country + factor(essround), data=ess_sub)
+
+#Figure 7a
+interplot::interplot(cohortfit1, var2="arrive_group",var1="immpol",point = T,
+                    ercolor="gray30", color="gray30",size=2, esize=1) +
+  theme_bw() + geom_hline(yintercept = 0, linetype="dashed", color="gray60") +
+#  theme(axis.text.x = element_text(angle = 45, hjust=1)) +
+  scale_x_continuous(breaks=seq(0,70,5),labels=seq(0,70,5))+
+  labs(x="Age at migration", y="Coefficients") +
+  theme(text=element_text(size=14))
+ggsave(here::here("Figures", "Figure 7a_immpol.png"),width=7,height=5) 
+
+#Figure 7b
+interplot::interplot(cohortfit2, var2="arrive_group",var1="imatt",point = T,
+                    ercolor="gray30", color="gray30",size=2, esize=1)+
+  theme_bw() + geom_hline(yintercept = 0, linetype="dashed", color="gray60") +
+  scale_x_continuous(breaks=seq(0,70,5),labels=seq(0,70,5))+
+  labs(x="Age at migration", y="Coefficients")+
+  theme(text=element_text(size=14))
+ggsave(here::here("Figures", "Figure 7b_imatt.png"),width=7,height=5) 
+```
+
+#cutoff at 6
+```{r}
+young6_1= lm(immigrate_policy~lrscale, data=young6)
+young6_2 = lm(immigrate_policy~lrscale + age+gender+Christian + Muslim +education, data=young6)
+young6_3 = plm(immigrate_policy~lrscale + age+gender+Christian + Muslim +education, data=young6, 
+              model="within", index=c("country","essround"))
+young6_4 = lm(immigrate_policy~lrscale + age+gender+Christian + Muslim +education + country + factor(essround),
+             data=young6)
+#stargazer::stargazer(young6_1, young6_2, young6_3, young6_4, type="latex",df=F, omit=c("country","essround"))
+
+old6_1= lm(immigrate_policy~lrscale, data=old6)
+old6_2 = lm(immigrate_policy~lrscale + age+gender+Christian + Muslim +education, data=old6)
+old6_3 = plm(immigrate_policy~lrscale + age+gender+Christian + Muslim +education, data=old6, 
+              model="within", index=c("country","essround"))
+old6_4 = lm(immigrate_policy~lrscale + age+gender+Christian + Muslim +education + country + factor(essround),
+             data=old6)
+#stargazer::stargazer(old6_1, old6_2, old6_3, old6_4, type="text",df=F, omit=c("country","essround"))
+```
+
+#cutoff at 10
+```{r}
+young10_1= lm(immigrate_policy~lrscale, data=young10)
+young10_2 = lm(immigrate_policy~lrscale + age+gender+Christian + Muslim +education, data=young10)
+young10_3 = plm(immigrate_policy~lrscale + age+gender+Christian + Muslim +education, data=young10, 
+              model="within", index=c("country","essround"))
+young10_4 = lm(immigrate_policy~lrscale + age+gender+Christian + Muslim +education + country + factor(essround),
+             data=young10)
+#stargazer::stargazer(young10_1, young10_2, young10_3, young10_4, type="text",df=F, omit=c("country","essround"))
+
+old10_1= lm(immigrate_policy~lrscale, data=old10)
+old10_2 = lm(immigrate_policy~lrscale + age+gender+Christian + Muslim +education, data=old10)
+old10_3 = plm(immigrate_policy~lrscale + age+gender+Christian + Muslim +education, data=old10, 
+              model="within", index=c("country","essround"))
+old10_4 = lm(immigrate_policy~lrscale + age+gender+Christian + Muslim +education + country + factor(essround),
+             data=old10)
+#stargazer::stargazer(old10_1, old10_2, old10_3, old10_4, type="text",df=F, omit=c("country","essround"))
+```     
+
+#cutoff at 14
+```{r}
+young14_1= lm(immigrate_policy~lrscale, data=young14)
+young14_2 = lm(immigrate_policy~lrscale + age+gender+Christian + Muslim +education, data=young14)
+young14_3 = plm(immigrate_policy~lrscale + age+gender+Christian + Muslim +education, data=young14, 
+              model="within", index=c("country","essround"))
+young14_4 = lm(immigrate_policy~lrscale + age+gender+Christian + Muslim +education + country + factor(essround),
+             data=young14)
+#stargazer::stargazer(young14_1, young14_2, young14_3, young14_4, type="text",df=F, omit=c("country","essround"))
+
+old14_1= lm(immigrate_policy~lrscale, data=old14)
+old14_2 = lm(immigrate_policy~lrscale + age+gender+Christian + Muslim +education, data=old14)
+old14_3 = plm(immigrate_policy~lrscale + age+gender+Christian + Muslim +education, data=old14, 
+              model="within", index=c("country","essround"))
+old14_4 = lm(immigrate_policy~lrscale + age+gender+Christian + Muslim +education + country + factor(essround),
+             data=old14)
+#stargazer::stargazer(old14_1, old14_2, old14_3, old14_4, type="text",df=F, omit=c("country","essround"))
+``` 
+
+#cutoff at 18
+```{r}
+young18_1= lm(immigrate_policy~lrscale, data=young18)
+young18_2 = lm(immigrate_policy~lrscale + age+gender+Christian + Muslim +education, data=young18)
+young18_3 = plm(immigrate_policy~lrscale + age+gender+Christian + Muslim +education, data=young18, 
+              model="within", index=c("country","essround"))
+young18_4 = lm(immigrate_policy~lrscale + age+gender+Christian + Muslim +education + country + factor(essround),
+             data=young18)
+#stargazer::stargazer(young18_1, young18_2, young18_3, young18_4, type="text",df=F, omit=c("country","essround"))
+
+old18_1= lm(immigrate_policy~lrscale, data=old18)
+old18_2 = lm(immigrate_policy~lrscale + age+gender+Christian + Muslim +education, data=old18)
+old18_3 = plm(immigrate_policy~lrscale + age+gender+Christian + Muslim +education, data=old18, 
+              model="within", index=c("country","essround"))
+old18_4 = lm(immigrate_policy~lrscale + age+gender+Christian + Muslim +education + country + factor(essround),
+             data=old18)
+#stargazer::stargazer(old18_1, old18_2, old18_3, old18_4, type="text",df=F, omit=c("country","essround"))
+```
+
+#additive index: attitudes towards immigration policy: age 6
+```{r}
+
+h3fit1 = lm(immigrate_policy~immpol, data=young6)
+h3fit2 = lm(immigrate_policy~immpol + age+gender+Christian + Muslim +education, data=young6)
+h3fit3 = plm(immigrate_policy~immpol + age+gender+Christian + Muslim +education, data=young6, 
+              model="within", index=c("country","essround"))
+h3fit4 = lm(immigrate_policy~immpol + age+gender+
+               Christian + Muslim +education + country + factor(essround),
+             data=young6)
+#stargazer::stargazer(h3fit1, h3fit2, h3fit3,h3fit4, type="text",df=F, omit=c("country","essround"))
+
+#old 6
+h3fit1 = lm(immigrate_policy~immpol, data=old6)
+h3fit2 = lm(immigrate_policy~immpol + age+gender+Christian + Muslim +education, data=old6)
+h3fit3 = plm(immigrate_policy~immpol + age+gender+Christian + Muslim +education, data=old6, 
+              model="within", index=c("country","essround"))
+h3fit4 = lm(immigrate_policy~immpol + age+gender+
+               Christian + Muslim +education + country + factor(essround),
+             data=old6)
+#stargazer::stargazer(h3fit1, h3fit2, h3fit3,h3fit4, type="text",df=F,  omit=c("country","essround"))
+```
+
+#additive index: attitudes towards immigration policy: age 10
+```{r}
+#young
+h3fit1 = lm(immigrate_policy~immpol, data=young10)
+h3fit2 = lm(immigrate_policy~immpol + age+gender+Christian + Muslim +education, data=young10)
+h3fit3 = plm(immigrate_policy~immpol + age+gender+Christian + Muslim +education, data=young10, 
+              model="within", index=c("country","essround"))
+h3fit4 = lm(immigrate_policy~immpol + age+gender+
+               Christian + Muslim +education + country + factor(essround),
+             data=young10)
+stargazer::stargazer(h3fit1, h3fit2, h3fit3,h3fit4, type="text",df=F,omit=c("country","essround"))
+
+#old 10
+h3fit1 = lm(immigrate_policy~immpol, data=old10)
+h3fit2 = lm(immigrate_policy~immpol + age+gender+Christian + Muslim +education, data=old10)
+h3fit3 = plm(immigrate_policy~immpol + age+gender+Christian + Muslim +education, data=old10, 
+              model="within", index=c("country","essround"))
+h3fit4 = lm(immigrate_policy~immpol + age+gender+
+               Christian + Muslim +education + country + factor(essround),
+             data=old10)
+stargazer::stargazer(h3fit1, h3fit2, h3fit3,h3fit4, type="text",df=F, omit=c("country","essround"))
+```
+
+#additive index: attitudes towards immigration policy: age 14
+```{r}
+#young
+h3fit1 = lm(immigrate_policy~immpol, data=young14)
+h3fit2 = lm(immigrate_policy~immpol + age+gender+Christian + Muslim +education, data=young14)
+h3fit3 = plm(immigrate_policy~immpol + age+gender+Christian + Muslim +education, data=young14, 
+              model="within", index=c("country","essround"))
+h3fit4 = lm(immigrate_policy~immpol + age+gender+
+               Christian + Muslim +education + country + factor(essround),
+             data=young14)
+stargazer::stargazer(h3fit1, h3fit2, h3fit3,h3fit4, type="text",df=F, omit=c("country","essround"))
+
+#old 14
+h3fit1 = lm(immigrate_policy~immpol, data=old14)
+h3fit2 = lm(immigrate_policy~immpol + age+gender+Christian + Muslim +education, data=old14)
+h3fit3 = plm(immigrate_policy~immpol + age+gender+Christian + Muslim +education, data=old14, 
+              model="within", index=c("country","essround"))
+h3fit4 = lm(immigrate_policy~immpol + age+gender+
+               Christian + Muslim +education + country + factor(essround),
+             data=old14)
+stargazer::stargazer(h3fit1, h3fit2, h3fit3,h3fit4, type="text",df=F, omit=c("country","essround"))
+```
+
+#additive index: attitudes towards immigration policy: age 18
+```{r}
+h3fit1 = lm(immigrate_policy~immpol, data=young18)
+h3fit2 = lm(immigrate_policy~immpol + age+gender+Christian + Muslim +education, data=young18)
+h3fit3 = plm(immigrate_policy~immpol + age+gender+Christian + Muslim +education, data=young18, 
+              model="within", index=c("country","essround"))
+h3fit4 = lm(immigrate_policy~immpol + age+gender+
+               Christian + Muslim +education + country + factor(essround),
+             data=young18)
+stargazer::stargazer(h3fit1, h3fit2, h3fit3,h3fit4, type="text",df=F,omit=c("country","essround"))
+
+#old 18
+h3fit1 = lm(immigrate_policy~immpol, data=old18)
+h3fit2 = lm(immigrate_policy~immpol + age+gender+Christian + Muslim +education, data=old18)
+h3fit3 = plm(immigrate_policy~immpol + age+gender+Christian + Muslim +education, data=old18, 
+              model="within", index=c("country","essround"))
+h3fit4 = lm(immigrate_policy~immpol + age+gender+
+               Christian + Muslim +education + country + factor(essround),
+             data=old18)
+stargazer::stargazer(h3fit1, h3fit2, h3fit3,h3fit4, type="text",df=F,omit=c("country","essround"))
+```
+
+#additive index: attitudes towards immigrants: age 6
+```{r}
+h3fit1 = lm(immigrate_policy~imatt, data=young6)
+h3fit2 = lm(immigrate_policy~imatt + age+gender+Christian + Muslim +education, data=young6)
+h3fit3 = plm(immigrate_policy~imatt + age+gender+Christian + Muslim +education, data=young6, 
+              model="within", index=c("country","essround"))
+h3fit4 = lm(immigrate_policy~imatt + age+gender+
+               Christian + Muslim +education + country + factor(essround),
+             data=young6)
+stargazer::stargazer(h3fit1, h3fit2, h3fit3,h3fit4, type="text",df=F,
+                     omit=c("country","essround"))
+
+#old 6
+h3fit1 = lm(immigrate_policy~imatt, data=old6)
+h3fit2 = lm(immigrate_policy~imatt + age+gender+Christian + Muslim +education, data=old6)
+h3fit3 = plm(immigrate_policy~imatt + age+gender+Christian + Muslim +education, data=old6, 
+              model="within", index=c("country","essround"))
+h3fit4 = lm(immigrate_policy~imatt + age+gender+
+               Christian + Muslim +education + country + factor(essround),
+             data=old6)
+stargazer::stargazer(h3fit1, h3fit2, h3fit3,h3fit4, type="text",df=F,
+                     omit=c("country","essround"))
+```
+
+#additive index: attitudes towards immigrants: age 10
+```{r}
+
+h3fit1 = lm(immigrate_policy~imatt, data=young10)
+h3fit2 = lm(immigrate_policy~imatt + age+gender+Christian + Muslim +education, data=young10)
+h3fit3 = plm(immigrate_policy~imatt + age+gender+Christian + Muslim +education, data=young10, 
+              model="within", index=c("country","essround"))
+h3fit4 = lm(immigrate_policy~imatt + age+gender+
+               Christian + Muslim +education + country + factor(essround),
+             data=young10)
+stargazer::stargazer(h3fit1, h3fit2, h3fit3,h3fit4, type="text",df=F,
+                     omit=c("country","essround"))
+
+#old 10
+
+h3fit1 = lm(immigrate_policy~imatt, data=old10)
+h3fit2 = lm(immigrate_policy~imatt + age+gender+Christian + Muslim +education, data=old10)
+h3fit3 = plm(immigrate_policy~imatt + age+gender+Christian + Muslim +education, data=old10, 
+              model="within", index=c("country","essround"))
+h3fit4 = lm(immigrate_policy~imatt + age+gender+
+               Christian + Muslim +education + country + factor(essround),
+             data=old10)
+stargazer::stargazer(h3fit1, h3fit2, h3fit3,h3fit4, type="text",df=F,
+                     omit=c("country","essround"))
+```
+
+#additive index: attitudes towards immigrants: age 14
+```{r}
+
+h3fit1 = lm(immigrate_policy~imatt, data=young14)
+h3fit2 = lm(immigrate_policy~imatt + age+gender+Christian + Muslim +education, data=young14)
+h3fit3 = plm(immigrate_policy~imatt + age+gender+Christian + Muslim +education, data=young14, 
+              model="within", index=c("country","essround"))
+h3fit4 = lm(immigrate_policy~imatt + age+gender+
+               Christian + Muslim +education + country + factor(essround),
+             data=young14)
+stargazer::stargazer(h3fit1, h3fit2, h3fit3,h3fit4, type="text",df=F,
+                     omit=c("country","essround"))
+
+#old 14
+
+h3fit1 = lm(immigrate_policy~imatt, data=old14)
+h3fit2 = lm(immigrate_policy~imatt + age+gender+Christian + Muslim +education, data=old14)
+h3fit3 = plm(immigrate_policy~imatt + age+gender+Christian + Muslim +education, data=old14, 
+              model="within", index=c("country","essround"))
+h3fit4 = lm(immigrate_policy~imatt + age+gender+
+               Christian + Muslim +education + country + factor(essround),
+             data=old14)
+stargazer::stargazer(h3fit1, h3fit2, h3fit3,h3fit4, type="text",df=F,
+                     omit=c("country","essround"))
+```
+
+#additive index: attitudes towards immigrants: age 18
+```{r}
+
+h3fit1 = lm(immigrate_policy~imatt, data=young18)
+h3fit2 = lm(immigrate_policy~imatt + age+gender+Christian + Muslim +education, data=young18)
+h3fit3 = plm(immigrate_policy~imatt + age+gender+Christian + Muslim +education, data=young18, 
+              model="within", index=c("country","essround"))
+h3fit4 = lm(immigrate_policy~imatt + age+gender+
+               Christian + Muslim +education + country + factor(essround),
+             data=young18)
+stargazer::stargazer(h3fit1, h3fit2, h3fit3,h3fit4, type="text",df=F,
+                     omit=c("country","essround"))
+
+#old 18
+
+h3fit1 = lm(immigrate_policy~imatt, data=old18)
+h3fit2 = lm(immigrate_policy~imatt + age+gender+Christian + Muslim +education, data=old18)
+h3fit3 = plm(immigrate_policy~imatt + age+gender+Christian + Muslim +education, data=old18, 
+              model="within", index=c("country","essround"))
+h3fit4 = lm(immigrate_policy~imatt + age+gender+
+               Christian + Muslim +education + country + factor(essround),
+             data=old18)
+stargazer::stargazer(h3fit1, h3fit2, h3fit3,h3fit4, type="text",df=F,
+                     omit=c("country","essround"))
+```
+
+#recoding to anti-immigrant party
+
+#cut-off as 6
+```{r}
+#attitudes towards immigrants
+h3fit1 = glm(anti_imm~imatt, data=young6)
+h3fit2 = glm(anti_imm~imatt + age+gender+Christian + Muslim +education, data=young6)
+h3fit3 = plm(anti_imm~imatt + age+gender+Christian + Muslim +education, data=young6, 
+              model="within", index=c("country","essround"))
+h3fit4 = glm(anti_imm~imatt + age+gender+
+               Christian + Muslim +education + country + factor(essround),
+             data=young6)
+
+stargazer::stargazer(h3fit1, h3fit2, h3fit3,h3fit4, type="text",df=F,
+                     omit=c("country","essround"))
+
+#attitudes towards immigrants
+h3fit1 = glm(anti_imm~imatt, data=old6)
+h3fit2 = glm(anti_imm~imatt + age+gender+Christian + Muslim +education, data=old6)
+h3fit3 = plm(anti_imm~imatt + age+gender+Christian + Muslim +education, data=old6, 
+              model="within", index=c("country","essround"))
+h3fit4 = glm(anti_imm~imatt + age+gender+
+               Christian + Muslim +education + country + factor(essround),
+             data=old6)
+
+stargazer::stargazer(h3fit1, h3fit2, h3fit3,h3fit4, type="text",df=F,
+                     omit=c("country","essround"))
+
+#attitudes towards immigration policy
+h3fit1 = glm(anti_imm~immpol, data=young6)
+h3fit2 = glm(anti_imm~immpol + age+gender+Christian + Muslim +education, data=young6)
+h3fit3 = plm(anti_imm~immpol + age+gender+Christian + Muslim +education, data=young6, 
+              model="within", index=c("country","essround"))
+h3fit4 = glm(anti_imm~immpol + age+gender+
+               Christian + Muslim +education + country + factor(essround),
+             data=young6)
+stargazer::stargazer(h3fit1, h3fit2, h3fit3,h3fit4, type="text",df=F,
+                     omit=c("country","essround"))
+
+
+#attitudes towards immigration policy
+h3fit1 = glm(anti_imm~immpol, data=old6)
+h3fit2 = glm(anti_imm~immpol + age+gender+Christian + Muslim +education, data=old6)
+h3fit3 = plm(anti_imm~immpol + age+gender+Christian + Muslim +education, data=old6, 
+              model="within", index=c("country","essround"))
+h3fit4 = glm(anti_imm~immpol + age+gender+
+               Christian + Muslim +education + country + factor(essround),
+             data=old6)
+stargazer::stargazer(h3fit1, h3fit2, h3fit3,h3fit4, type="text",df=F,
+                     omit=c("country","essround"))
+```
+
+#cut-off as 10
+```{r}
+#attitudes towards immigrants
+h3fit1 = glm(anti_imm~imatt, data=young10)
+h3fit2 = glm(anti_imm~imatt + age+gender+Christian + Muslim +education, data=young10)
+h3fit3 = plm(anti_imm~imatt + age+gender+Christian + Muslim +education, data=young10, 
+              model="within", index=c("country","essround"))
+h3fit4 = glm(anti_imm~imatt + age+gender+
+               Christian + Muslim +education + country + factor(essround),
+             data=young10)
+
+stargazer::stargazer(h3fit1, h3fit2, h3fit3,h3fit4, type="text",df=F,
+                     omit=c("country","essround"))
+
+#attitudes towards immigrants
+h3fit1 = glm(anti_imm~imatt, data=old10)
+h3fit2 = glm(anti_imm~imatt + age+gender+Christian + Muslim +education, data=old10)
+h3fit3 = plm(anti_imm~imatt + age+gender+Christian + Muslim +education, data=old10, 
+              model="within", index=c("country","essround"))
+h3fit4 = glm(anti_imm~imatt + age+gender+
+               Christian + Muslim +education + country + factor(essround),
+             data=old10)
+
+stargazer::stargazer(h3fit1, h3fit2, h3fit3,h3fit4, type="text",df=F,
+                     omit=c("country","essround"))
+
+#attitudes towards immigration policy
+h3fit1 = glm(anti_imm~immpol, data=young10)
+h3fit2 = glm(anti_imm~immpol + age+gender+Christian + Muslim +education, data=young10)
+h3fit3 = plm(anti_imm~immpol + age+gender+Christian + Muslim +education, data=young10, 
+              model="within", index=c("country","essround"))
+h3fit4 = glm(anti_imm~immpol + age+gender+
+               Christian + Muslim +education + country + factor(essround),
+             data=young10)
+stargazer::stargazer(h3fit1, h3fit2, h3fit3,h3fit4, type="text",df=F,
+                     omit=c("country","essround"))
+
+#attitudes towards immigration policy
+h3fit1 = glm(anti_imm~immpol, data=old10)
+h3fit2 = glm(anti_imm~immpol + age+gender+Christian + Muslim +education, data=old10)
+h3fit3 = plm(anti_imm~immpol + age+gender+Christian + Muslim +education, data=old10, 
+              model="within", index=c("country","essround"))
+h3fit4 = glm(anti_imm~immpol + age+gender+
+               Christian + Muslim +education + country + factor(essround),
+             data=old10)
+stargazer::stargazer(h3fit1, h3fit2, h3fit3,h3fit4, type="text",df=F,
+                     omit=c("country","essround"))
+
+```
+
+#cut-off as 14
+```{r}
+#attitudes towards immigrants
+h3fit1 = glm(anti_imm~imatt, data=young14)
+h3fit2 = glm(anti_imm~imatt + age+gender+Christian + Muslim +education, data=young14)
+h3fit3 = plm(anti_imm~imatt + age+gender+Christian + Muslim +education, data=young14, 
+              model="within", index=c("country","essround"))
+h3fit4 = glm(anti_imm~imatt + age+gender+
+               Christian + Muslim +education + country + factor(essround),
+             data=young14)
+
+stargazer::stargazer(h3fit1, h3fit2, h3fit3,h3fit4, type="text",df=F,
+                     omit=c("country","essround"))
+
+#attitudes towards immigrants
+h3fit1 = glm(anti_imm~imatt, data=old14)
+h3fit2 = glm(anti_imm~imatt + age+gender+Christian + Muslim +education, data=old14)
+h3fit3 = plm(anti_imm~imatt + age+gender+Christian + Muslim +education, data=old14, 
+              model="within", index=c("country","essround"))
+h3fit4 = glm(anti_imm~imatt + age+gender+
+               Christian + Muslim +education + country + factor(essround),
+             data=old14)
+
+stargazer::stargazer(h3fit1, h3fit2, h3fit3,h3fit4, type="text",df=F,
+                     omit=c("country","essround"))
+
+#attitudes towards immigration policy
+h3fit1 = glm(anti_imm~immpol, data=young14)
+h3fit2 = glm(anti_imm~immpol + age+gender+Christian + Muslim +education, data=young14)
+h3fit3 = plm(anti_imm~immpol + age+gender+Christian + Muslim +education, data=young14, 
+              model="within", index=c("country","essround"))
+h3fit4 = glm(anti_imm~immpol + age+gender+
+               Christian + Muslim +education + country + factor(essround),
+             data=young14)
+stargazer::stargazer(h3fit1, h3fit2, h3fit3,h3fit4, type="text",df=F,
+                     omit=c("country","essround"))
+
+
+
+#attitudes towards immigration policy
+h3fit1 = glm(anti_imm~immpol, data=old14)
+h3fit2 = glm(anti_imm~immpol + age+gender+Christian + Muslim +education, data=old14)
+h3fit3 = plm(anti_imm~immpol + age+gender+Christian + Muslim +education, data=old14, 
+              model="within", index=c("country","essround"))
+h3fit4 = glm(anti_imm~immpol + age+gender+
+               Christian + Muslim +education + country + factor(essround),
+             data=old14)
+stargazer::stargazer(h3fit1, h3fit2, h3fit3,h3fit4, type="text",df=F,
+                     omit=c("country","essround"))
+```
+
+#cut-off as 18
+```{r}
+#attitudes towards immigrants
+h3fit1 = glm(anti_imm~imatt, data=young18)
+h3fit2 = glm(anti_imm~imatt + age+gender+Christian + Muslim +education, data=young18)
+h3fit3 = plm(anti_imm~imatt + age+gender+Christian + Muslim +education, data=young18, 
+              model="within", index=c("country","essround"))
+h3fit4 = glm(anti_imm~imatt + age+gender+
+               Christian + Muslim +education + country + factor(essround),
+             data=young18)
+
+stargazer::stargazer(h3fit1, h3fit2, h3fit3,h3fit4, type="text",df=F,
+                     omit=c("country","essround"))
+
+#attitudes towards immigrants
+h3fit1 = glm(anti_imm~imatt, data=old18)
+h3fit2 = glm(anti_imm~imatt + age+gender+Christian + Muslim +education, data=old18)
+h3fit3 = plm(anti_imm~imatt + age+gender+Christian + Muslim +education, data=old18, 
+              model="within", index=c("country","essround"))
+h3fit4 = glm(anti_imm~imatt + age+gender+
+               Christian + Muslim +education + country + factor(essround),
+             data=old18)
+
+stargazer::stargazer(h3fit1, h3fit2, h3fit3,h3fit4, type="text",df=F,
+                     omit=c("country","essround"))
+
+#attitudes towards immigration policy
+h3fit1 = glm(anti_imm~immpol, data=young18)
+h3fit2 = glm(anti_imm~immpol + age+gender+Christian + Muslim +education, data=young18)
+h3fit3 = plm(anti_imm~immpol + age+gender+Christian + Muslim +education, data=young18, 
+              model="within", index=c("country","essround"))
+h3fit4 = glm(anti_imm~immpol + age+gender+
+               Christian + Muslim +education + country + factor(essround),
+             data=young18)
+stargazer::stargazer(h3fit1, h3fit2, h3fit3,h3fit4, type="text",df=F,
+                     omit=c("country","essround"))
+
+#attitudes towards immigration policy
+h3fit1 = glm(anti_imm~immpol, data=old18)
+h3fit2 = glm(anti_imm~immpol + age+gender+Christian + Muslim +education, data=old18)
+h3fit3 = plm(anti_imm~immpol + age+gender+Christian + Muslim +education, data=old18, 
+              model="within", index=c("country","essround"))
+h3fit4 = glm(anti_imm~immpol + age+gender+
+               Christian + Muslim +education + country + factor(essround),
+             data=old18)
+stargazer::stargazer(h3fit1, h3fit2, h3fit3,h3fit4, type="text",df=F,
+                     omit=c("country","essround"))
+```
+
+

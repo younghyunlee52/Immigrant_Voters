@@ -1,0 +1,7 @@
+"0","# Calculate the mean of immpol by country"
+"0","mean_immpol_by_country <- ess_ches %>%"
+"0","  group_by(country) %>%"
+"0","  summarise(mean_immpol = mean(immpol, na.rm = TRUE))"
+"0",""
+"0","# Show the result"
+"0","print(mean_immpol_by_country)"

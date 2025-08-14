@@ -1,0 +1,536 @@
+---
+title: "06_Data_Viz"
+author: "Sanghoon Kim-Leffingwell"
+date: "2024-06-21"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+#predicted plot attitudes towards immigrants
+```{r}
+table(ess_ches$imatt)
+# Fit logistic regression models for each group
+native_model = glm(anti_imm ~ imatt, data = subset(ess_ches, status == "native"), family = binomial)
+first_model = glm(anti_imm ~ imatt, data = subset(ess_ches, status == "first"), family = binomial)
+second_model = glm(anti_imm ~ imatt, data = subset(ess_ches, status == "second"), family = binomial)
+
+# Create a sequence of values for the independent variable for a smoother curve
+x_seq = seq(min(ess_ches$imatt), max(ess_ches$imatt), length.out = 100)
+
+# Function to get predictions and confidence intervals
+get_predictions = function(model, x_seq) {
+  pred = predict(model, newdata = data.frame(imatt = x_seq), type = "link", se.fit = TRUE)
+  predicted_prob = plogis(pred$fit)
+  se = pred$se.fit
+  alpha = 0.05
+  z = qnorm(1 - alpha / 2)
+  lower = plogis(pred$fit - z * se)
+  upper = plogis(pred$fit + z * se)
+  data.frame(imatt = x_seq, predicted_prob = predicted_prob, lower = lower, upper = upper)
+}
+
+# Get predictions for each group
+native_predictions = get_predictions(native_model, x_seq)
+first_predictions = get_predictions(first_model, x_seq)
+second_predictions = get_predictions(second_model, x_seq)
+
+# Add group labels
+native_predictions$status = "Native"
+first_predictions$status = "First"
+second_predictions$status = "Second"
+
+# Combine predictions
+predictions = rbind(native_predictions, first_predictions, second_predictions)
+
+# Plot the data, predicted probabilities, and confidence intervals
+predicted_plot = ggplot() +
+  geom_point(data = ess_ches, aes(x = imatt, y = anti_imm, color = status), alpha = 0.5, position = position_jitter(height = 0.02)) +
+  geom_line(data = predictions, aes(x = imatt, y = predicted_prob, color = status), size = 1) +
+  geom_ribbon(data = predictions, aes(x = imatt, ymin = lower, ymax = upper, fill = status), alpha = 0.2) +
+  labs(title = "Predicted Probability of Voting for \n Anti-Immigrant Parties by Immigration Status",
+       x = "Attitudes towards Immigrants (0 negative – 10 positive)",
+       y = "Predicted Probability of Voting for Anti-Immigrant") +
+  scale_color_manual(values = c("Native" = "#174978", "First" = "#22a884", "Second" = "#ff2216"),
+                     name="Immigration status") +
+  scale_fill_manual(values = c("Native" = "#174978", "First" = "#22a884", "Second" = "#ff2216"),
+                    name="Immigration status")  +
+  ylim(0.05, 0.7) +
+  theme_bw() + 
+  theme(text = element_text(size=15), legend.position = "bottom")
+  
+predicted_plot
+
+#ggsave("Figures/predicted.png", plot = predicted_plot, width = 8, height = 6)
+
+library(ggplot2)
+predictions_two = rbind(native_predictions, first_predictions)
+predictions_two
+predicted_plot2 = ggplot() +
+  geom_point(data = ess_ches, aes(x = imatt, y = anti_imm, color = status), alpha = 0.5, position = position_jitter(height = 0.02)) +
+  geom_line(data = predictions_two, aes(x = imatt, y = predicted_prob, color = status), size = 1) +
+  geom_ribbon(data = predictions_two, aes(x = imatt, ymin = lower, ymax = upper, fill = status), alpha = 0.2) +
+  labs(title = "Predicted Probability of Voting for \n Anti-Immigrant Parties by Immigration Status",
+       x = "Attitudes towards Immigrants (0 negative – 10 positive)",
+       y = "Predicted Probability of Voting for Anti-Immigrant") +
+  scale_color_manual(values = c("Native" = "#174978", "First" = "#22a884"),
+                     name="Immigration status") +
+  scale_fill_manual(values = c("Native" = "#174978", "First" = "#22a884"),
+                    name="Immigration status")  +
+  ylim(0.05, 0.8) +
+  theme_bw() + 
+  theme(text = element_text(size=15), legend.position = "bottom")
+
+predicted_plot2
+
+#ggsave("Figures/predicted2.png", plot = predicted_plot2, width = 8, height = 6)
+
+```
+
+
+#predicted plot attitudes towards immigration policy 
+```{r}
+# Fit logistic regression models for each group
+native_model = glm(anti_imm ~ immpol, data = subset(ess_ches, status == "native"), family = binomial)
+first_model = glm(anti_imm ~ immpol, data = subset(ess_ches, status == "first"), family = binomial)
+second_model = glm(anti_imm ~ immpol, data = subset(ess_ches, status == "second"), family = binomial)
+
+# Create a sequence of values for the independent variable for a smoother curve
+x_seq = seq(min(ess_ches$immpol), max(ess_ches$immpol), length.out = 100)
+
+# Function to get predictions and confidence intervals
+get_predictions = function(model, x_seq) {
+  pred = predict(model, newdata = data.frame(immpol = x_seq), type = "link", se.fit = TRUE)
+  predicted_prob = plogis(pred$fit)
+  se = pred$se.fit
+  alpha = 0.05
+  z = qnorm(1 - alpha / 2)
+  lower = plogis(pred$fit - z * se)
+  upper = plogis(pred$fit + z * se)
+  data.frame(immpol = x_seq, predicted_prob = predicted_prob, lower = lower, upper = upper)
+}
+
+# Get predictions for each group
+native_predictions = get_predictions(native_model, x_seq)
+first_predictions = get_predictions(first_model, x_seq)
+second_predictions = get_predictions(second_model, x_seq)
+
+# Add group labels
+native_predictions$status = "Native"
+first_predictions$status = "First"
+second_predictions$status = "Second"
+
+# Combine predictions
+predictions = rbind(native_predictions, first_predictions, second_predictions)
+
+# Plot the data, predicted probabilities, and confidence intervals
+predicted_plot = ggplot() +
+  geom_point(data = ess_ches, aes(x = immpol, y = anti_imm, color = status), alpha = 0.5, position = position_jitter(height = 0.02)) +
+  geom_line(data = predictions, aes(x = immpol, y = predicted_prob, color = status), size = 1) +
+  geom_ribbon(data = predictions, aes(x = immpol, ymin = lower, ymax = upper, fill = status), alpha = 0.2) +
+  labs(title = "Predicted Probability of Voting for \n Anti-Immigrant by Immigration Status",
+       x = "Attitudes towards Immigration Policies (0 negative – 3 positive)",
+       y = "Predicted Probability of Voting for Anti-Immigrant") +
+  scale_color_manual(values = c("Native" = "#174978", "First" = "#22a884", "Second" = "#ff2216"),
+                     name="Immigration status") +
+  scale_fill_manual(values = c("Native" = "#174978", "First" = "#22a884", "Second" = "#ff2216"),
+                    name="Immigration status") +
+  ylim(0.05, 0.7) +theme_bw() + 
+  theme(text = element_text(size=15), legend.position = "bottom")
+  
+predicted_plot
+#ggsave("Figures/predicted_pol.png", plot = predicted_plot, width = 8, height = 6)
+
+predictions2 = rbind(native_predictions, first_predictions)
+predictions2
+# Plot the data, predicted probabilities, and confidence intervals
+predicted_plot2 = ggplot() +
+  geom_point(data = ess_ches, aes(x = immpol, y = anti_imm, color = status), alpha = 0.5, position = position_jitter(height = 0.02)) +
+  geom_line(data = predictions2, aes(x = immpol, y = predicted_prob, color = status), size = 1) +
+  geom_ribbon(data = predictions2, aes(x = immpol, ymin = lower, ymax = upper, fill = status), alpha = 0.2) +
+  labs(title = "Predicted Probability of Voting for \n Anti-Immigrant by Immigration Status",
+       x = "Attitudes towards Immigration Policies (0 negative – 3 positive)",
+       y = "Predicted Probability of Voting for Anti-Immigrant") +
+  scale_color_manual(values = c("Native" = "#174978", "First" = "#22a884"),
+                     name="Immigration status") +
+  scale_fill_manual(values = c("Native" = "#174978", "First" = "#22a884"),
+                    name="Immigration status") +
+  ylim(0.05, 0.7) +theme_bw() + 
+  theme(text = element_text(size=15), legend.position = "bottom")
+
+#ggsave("Figures/predicted_pol2.png", plot = predicted_plot2, width = 8, height = 6)
+predicted_plot2
+```
+
+#recoding anti-immigrant party (additive)
+```{r}
+colnames(ess_ches)
+ess_ches$antiparty = NA
+ess_ches$antiparty = 1/2*(ess_ches$immigrate_policy + ess_ches$multiculturalism)
+table(ess_ches$antiparty)
+
+ess_ches$antiparty = ifelse(is.na(ess_ches$antiparty), NA,
+                    ifelse(ess_ches$antiparty > 7, 1, 0))
+table(ess_ches$antiparty, useNA = "always")
+
+cor(ches$immigrate_policy, ches$multiculturalism, use = "complete.obs")
+cor(ches$immigrate_policy, ches$nationalism, use = "complete.obs")
+```
+### multiculturalism and immigration policy almost overlaps. (correlation = 0.9)
+
+#predicted plot attitudes towards immigrants
+```{r}
+# Fit logistic regression models for each group
+native_model = glm(antiparty ~ imatt, data = subset(ess_ches, status == "native"), family = binomial)
+first_model = glm(antiparty ~ imatt, data = subset(ess_ches, status == "first"), family = binomial)
+second_model = glm(antiparty ~ imatt, data = subset(ess_ches, status == "second"), family = binomial)
+
+# Create a sequence of values for the independent variable for a smoother curve
+x_seq = seq(min(ess_ches$imatt), max(ess_ches$imatt), length.out = 100)
+
+# Function to get predictions and confidence intervals
+get_predictions = function(model, x_seq) {
+  pred = predict(model, newdata = data.frame(imatt = x_seq), type = "link", se.fit = TRUE)
+  predicted_prob = plogis(pred$fit)
+  se = pred$se.fit
+  alpha = 0.05
+  z = qnorm(1 - alpha / 2)
+  lower = plogis(pred$fit - z * se)
+  upper = plogis(pred$fit + z * se)
+  data.frame(imatt = x_seq, predicted_prob = predicted_prob, lower = lower, upper = upper)
+}
+
+# Get predictions for each group
+native_predictions = get_predictions(native_model, x_seq)
+first_predictions = get_predictions(first_model, x_seq)
+second_predictions = get_predictions(second_model, x_seq)
+
+# Add group labels
+native_predictions$status = "native"
+first_predictions$status = "first"
+second_predictions$status = "second"
+
+# Combine predictions
+predictions = rbind(native_predictions, first_predictions, second_predictions)
+
+# Plot the data, predicted probabilities, and confidence intervals
+predicted_plot = ggplot() +
+  geom_point(data = ess_ches, aes(x = imatt, y = antiparty, color = status), alpha = 0.5, position = position_jitter(height = 0.02)) +
+  geom_line(data = predictions, aes(x = imatt, y = predicted_prob, color = status), size = 1) +
+  geom_ribbon(data = predictions, aes(x = imatt, ymin = lower, ymax = upper, fill = status), alpha = 0.2) +
+  labs(title = "Predicted Probability of Voting for Anti-Immigrant by Immigration Status",
+       x = "Attitudes Towards Immigrants",
+       y = "Predicted Probability of Voting for Anti-Immigrant") +
+  scale_color_manual(values = c("native" = "blue", "first" = "green", "second" = "red")) +
+  scale_fill_manual(values = c("native" = "blue", "first" = "green", "second" = "red")) + ylim(0.05, 0.7)
+
+##ggsave(here("Figures", "predicted.png"), plot = predicted_plot, width = 8, height = 6)
+```
+
+
+#predicted plot attitudes towards immigration policy 
+```{r}
+# Fit logistic regression models for each group
+native_model = glm(antiparty ~ immpol, data = subset(ess_ches, status == "native"), family = binomial)
+first_model = glm(antiparty ~ immpol, data = subset(ess_ches, status == "first"), family = binomial)
+second_model = glm(antiparty ~ immpol, data = subset(ess_ches, status == "second"), family = binomial)
+
+# Create a sequence of values for the independent variable for a smoother curve
+x_seq = seq(min(ess_ches$immpol), max(ess_ches$immpol), length.out = 100)
+
+# Function to get predictions and confidence intervals
+get_predictions = function(model, x_seq) {
+  pred = predict(model, newdata = data.frame(immpol = x_seq), type = "link", se.fit = TRUE)
+  predicted_prob = plogis(pred$fit)
+  se = pred$se.fit
+  alpha = 0.05
+  z = qnorm(1 - alpha / 2)
+  lower = plogis(pred$fit - z * se)
+  upper = plogis(pred$fit + z * se)
+  data.frame(immpol = x_seq, predicted_prob = predicted_prob, lower = lower, upper = upper)
+}
+
+# Get predictions for each group
+native_predictions = get_predictions(native_model, x_seq)
+first_predictions = get_predictions(first_model, x_seq)
+second_predictions = get_predictions(second_model, x_seq)
+
+# Add group labels
+native_predictions$status = "native"
+first_predictions$status = "first"
+second_predictions$status = "second"
+
+# Combine predictions
+predictions = rbind(native_predictions, first_predictions, second_predictions)
+
+# Plot the data, predicted probabilities, and confidence intervals
+predicted_plot = ggplot() +
+  geom_point(data = ess_ches, aes(x = immpol, y = antiparty, color = status), alpha = 0.5, position = position_jitter(height = 0.02)) +
+  geom_line(data = predictions, aes(x = immpol, y = predicted_prob, color = status), size = 1) +
+  geom_ribbon(data = predictions, aes(x = immpol, ymin = lower, ymax = upper, fill = status), alpha = 0.2) +
+  labs(title = "Predicted Probability of Voting for Anti-Immigrant by Immigration Status",
+       x = "Attitudes Towards Immigration Policies",
+       y = "Predicted Probability of Voting for Anti-Immigrant") +
+  scale_color_manual(values = c("native" = "blue", "first" = "green", "second" = "red")) +
+  scale_fill_manual(values = c("native" = "blue", "first" = "green", "second" = "red")) + 
+  ylim(0.05, 0.7)
+
+##ggsave(here("Figures", "predicted_pol.png"), plot = predicted_plot, width = 8, height = 6)
+```
+
+
+```{r}
+
+subplot1 <- ggplot(ess_ches) + 
+  geom_density(aes(imatt, fill=status),alpha=0.5) + 
+  labs(x="Immigrant attitude", y="") +
+  theme_bw()+
+  theme(text=element_text(size=13))
+
+subplot2 <- ggplot(ess_ches) + 
+  geom_density(aes(immpol, fill=status),alpha=0.5,adjust=1.5) + 
+  labs(x="Immigration policy attitude", y="") +
+  theme_bw()+
+  theme(text=element_text(size=13))
+
+subplot3 <- ggplot(ess_ches, aes(group=status)) + 
+  geom_density(aes(lrscale, fill=status),alpha=0.5,adjust=1.5) + 
+  labs(x="Left-right scale", y="Density") +
+  scale_fill_discrete(labels=c("Native","First","Second"), name="Status")+
+  theme_bw() +
+  theme(text=element_text(size=13))
+
+library(ggpubr)
+ggarrange(subplot3,subplot1, subplot2, 
+                        ncol=3, common.legend = T, legend="bottom")
+#ggsave("fig/gridplot.png",width=12,height=4)
+```
+
+
+map 
+
+```{r}
+library(rnaturalearth)
+library(rnaturalearthdata)
+library(sf)
+world <- ne_countries(scale = "medium", returnclass = "sf")
+Europe <- world[which(world$continent == "Europe"),]
+world_map = map_data("world") %>% 
+  filter(! long > 180)
+table(world_map$region)
+
+Europe$iso_a2_eh
+average_by_country2$iso_a2_eh <- average_by_country2$country
+average_by_country2$mean_immigrate_policy
+average_by_country2$country
+average_by_country2$region <- c("Portugal","Germany","Finland","Ireland", "Spain",
+                                "UK", "Belgium","Estonia","Sweden",
+                                "Poland","Hungary","Netherlands","France","Italy",
+                                "Denmark","Slovenia","Lithuania","Austria","Croatia",
+                                "Latvia","Cyprus","Slovakia","Czech Republic","Bulgaria")
+average_by_country3$country
+average_by_country3$iso_a2_eh <- average_by_country3$country
+average_by_country3$mean_immigrate_policy
+average_by_country3$country
+average_by_country3$region <- c("Portugal","Finland","Ireland","Estonia","Germany", "Spain", "UK", "Belgium","Lithuania","France","Netherlands","Sweden", "Denmark","Slovenia","Cyprus","Croatia","Italy","Belgium","Poland", "Austria","Czech Republic", "Hungary","Slovakia")
+
+
+Europe2 <- left_join(Europe, average_by_country2, by="iso_a2_eh")
+Europe4 <- left_join(Europe, average_by_country3, by="iso_a2_eh")
+Europe3 <- left_join(world_map, average_by_country2, by="region")
+Europe4 <- left_join(world_map, average_by_country3, by="region")
+
+Europe2$mean_immigrate_policy_r <-round(Europe2$mean_immigrate_policy,2)
+Europe3$mean_immigrate_policy_r <-round(Europe3$mean_immigrate_policy,2)
+Europe4$mean_immigrate_policy_r <-round(Europe4$mean_immigrate_policy,2)
+
+library(ggplot2)
+ggplot(Europe2) +
+  geom_sf(aes(fill=mean_immigrate_policy)) +
+  coord_sf(xlim = c(-20,35), ylim = c(35,72), expand = FALSE) +
+  scale_fill_gradient(low="#d1ffbd",high="darkgreen", 
+                      breaks=c(4,5,6,7), 
+                      labels=c("4 anti-immigration","5","6","7 pro-immigration"),
+                      name="",
+                      na.value="gray95")+
+  geom_sf_label(aes(label=mean_immigrate_policy_r),fill = "white", 
+                 size=3) +
+  theme_void() +
+  theme(legend.position = "right",legend.key.height = unit(.8, "cm"),
+        text=element_text(size=13)) 
+
+#ggsave("fig/europe_map.png", width=10,height=7)
+library(ggthemes)
+
+ggplot(Europe4) +
+  geom_sf(aes(fill=mean_immigrate_policy2)) +
+  coord_sf(xlim = c(-20,35), ylim = c(35,72), expand = FALSE) +
+  scale_fill_gradient(low="lightblue",high="darkblue",
+                      na.value="gray95")+
+  geom_sf_label(aes(label=mean_immigrate_policy_r),fill = "white", 
+                 size=3) +
+  theme_void() +
+  theme(legend.position = "none",
+        text=element_text(size=13)) 
+#ggsave("fig/europe_map2.png", width=10,height=7)
+```
+
+antiparty~ imatt*status
+```{r}
+library(tidyverse)
+colnames(essaggdat)
+str(ess_ches$antiparty)
+essaggdat <- aggregate(imatt~lrscale+country, 
+                       function(x) c(mean = mean(x), sd = sd(x)), data=ess_ches)
+essaggdat <- data.frame(essaggdat)
+
+ess_ches %>%
+  group_by(country, lrscale,status) %>%
+  summarize(mean=mean(imatt), sd=sd(imatt)) -> essaggdat
+colnames(essaggdat)
+
+library(ggplot2)
+ggplot(essaggdat) + 
+  geom_smooth(aes(x=lrscale, y=mean,color=status), method="lm", linewidth=.5) +
+  facet_wrap(~country)+ theme_bw() +
+  scale_color_brewer(palette = "Set1") + 
+  labs(y="Immigration attitude", x="Left-right orientation")
+#ggsave("fig/lr_and_immatt.png", width=10,height=9)
+
+ess_ches %>%
+  group_by(country, imatt,status) %>%
+  summarize(mean=mean(immigrate_policy), sd=sd(immigrate_policy)) -> essaggdat_anti
+colnames(essaggdat)
+
+ess_ches %>%
+  group_by(country, imatt,status) %>%
+  summarize(mean=mean(anti_imm), sd=sd(anti_imm)) -> essaggdat_anti2
+
+
+library(ggplot2)
+ggplot(essaggdat_anti2) + 
+  geom_smooth(aes(x=imatt, y=mean,color=status), method="lm",
+              linewidth=.5,se=F) +
+  facet_wrap(~country, ncol=4) + theme_bw() +
+  scale_color_brewer(palette = "Set1", name="Status",
+                     labels=c("Native", "First gen", "Second gen"))+ 
+  theme(legend.position = c(0.9,0.07),
+        legend.box.background = element_rect(colour = "black"),
+        text=element_text(size=13)) +
+  labs(x="Immigration attitude", y="Support for anti-immigration parties")
+#ggsave("fig/immatt_and_antiparty_status.png", width=8,height=9)
+
+library(tidyverse)
+```
+
+
+```{r}
+prop.table(table(ess_ches$country ,ess_ches$status))
+library(tidyverse)
+ess_ches%>% 
+  group_by(country, status) %>%
+   summarise(n = n()) %>%
+  mutate(freq = n / sum(n)*100) %>%
+  print(n=100)
+
+ess_ches%>% 
+  group_by(country) %>%
+   summarise(n = n()) %>%
+  print(n=100)
+nrow(ess_ches)
+ess_ches %>%
+  count(country, status) %>%
+  group_by(country) %>%
+  mutate(freq = n / sum(n))
+```
+
+
+
+Cohort analysis
+```{r}
+library(tidyverse)
+
+ess_sub <- read.csv("ess_sub.csv")
+ess_sub %>%
+  filter(status=="first") -> ess_sub 
+
+ess_sub$livecnta[ess_sub$livecnta>2020] <-NA
+
+ess_sub$arrive = ifelse(ess_sub$essround == 9,
+                         ess_sub$age - (2018- ess_sub$livecnta),
+                         ifelse(ess_sub$essround == 10,
+                                ess_sub$age - (2020 - ess_sub$livecnta), NA))
+
+ess_sub$arrive[ess_sub$arrive==-7] <- NA
+table(ess_sub$arrive)
+
+ess_sub$imatt = NA
+ess_sub$imatt =1/3*(ess_sub$imbgeco + ess_sub$imueclt + ess_sub$imwbcnt)
+
+ess_sub$immpol = NA
+ess_sub$immpol = 1/3*(ess_sub$impol1 + ess_sub$impol2 + ess_sub$impol3)
+
+ess_sub$Christian = ifelse(ess_sub$religion == 1, 1, 0)
+ess_sub$Muslim = ifelse(ess_sub$religion == 2, 1, 0)
+
+cohortfit1 = lm(immigrate_policy~immpol*(arrive_group) + gender+Christian + Muslim +education + country + factor(essround), data=ess_sub)
+
+cohortfit2 = lm(immigrate_policy~imatt*(arrive_group) + gender+Christian + Muslim +education + country + factor(essround), data=ess_sub)
+
+ess_sub$anti_imm = ifelse(is.na(ess_sub$immigrate_policy), NA,
+                    ifelse(ess_sub$immigrate_policy > 7, 1, 0))
+
+cohortfit3 = glm(anti_imm~immpol*(arrive_group) + gender+Christian + Muslim +education + country + factor(essround), data=ess_sub, family="binomial")
+
+ess_sub$arrive_group <-  cut(ess_sub$arrive, breaks=seq(0,75,5), labels=seq(0,70,5))
+ess_sub$arrive_group <- as.numeric(as.character(ess_sub$arrive_group))
+
+library(ggplot2)
+library(sjPlot)
+plot_model(cohortfit1, type="pred", terms=c("arrive","immpol"))
+
+
+interplot::interplot(cohortfit1, var2="arrive_group",var1="immpol",point = T,
+                    ercolor="gray30", color="gray30",size=2, esize=1) +
+  theme_bw() + geom_hline(yintercept = 0, linetype="dashed", color="gray60") +
+#  theme(axis.text.x = element_text(angle = 45, hjust=1)) +
+  scale_x_continuous(breaks=seq(0,70,5),labels=seq(0,70,5))+
+  labs(x="Age at arrival", y="Coefficients") +
+  theme(text=element_text(size=14))
+#ggsave("fig/condition_immpol.png", width=7,height=5)
+
+interplot::interplot(cohortfit2, var2="arrive_group",var1="imatt",point = T,
+                    ercolor="gray30", color="gray30",size=2, esize=1)+
+  theme_bw() + geom_hline(yintercept = 0, linetype="dashed", color="gray60") +
+  scale_x_continuous(breaks=seq(0,70,5),labels=seq(0,70,5))+
+  labs(x="Age at arrival", y="Coefficients")+
+  theme(text=element_text(size=14))
+#ggsave("fig/condition_imatt.png", width=7,height=5)
+
+interplot::interplot(cohortfit3, var2="arrive_group",var1="immpol",point = T,
+                    ercolor="gray30", color="gray30")+
+  theme_bw() + geom_hline(yintercept = 0, linetype="dashed", color="gray60") +
+  scale_x_continuous(breaks=seq(0,70,5),labels=seq(0,70,5))+
+  labs(x="Age of immigration", y="Coefficients")
+
+?interplot
+
+arrive_eff = data.frame()
+for (i in 0:10) {
+  emm <- emmeans(cohortfit1,  ~ arrive,
+  at = list(
+  arrive = i/2), type = "response", level = 0.95)
+  arrive_eff = rbind(data.frame(summary(emm)), arrive_eff)
+}
+
+ggplot(arrive_eff, aes(x = ((arrive+2)*10), y = emmean)) +
+    geom_point() + 
+    geom_line() +
+    geom_errorbar(aes(ymin = lower.CL, ymax = upper.CL), width = 1) +
+    xlab("Age") +
+    ylab("Probability of weeky cannabis use")
+
+```

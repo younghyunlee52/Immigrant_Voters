@@ -1,0 +1,48 @@
+---
+title: "Immigrant voters"
+output: html_document
+date: "2022-10-08"
+---
+#Relevant Datasets
+- https://ess-search.nsd.no/en/study/bdc7c350-1029-4cb3-9d5e-53f668b8fa74
+- https://static1.squarespace.com/static/5975c9bfdb29d6a05c65209b/t/62e9612a9090ba609c4b8693/1659461930880/1999-2019_CHES_codebook.pd
+
+#packages
+```{r}
+library(readr)
+library(base)
+library(here)
+library(dplyr)
+library(xtable)
+library(stargazer)
+```
+
+#loading data
+```{r}
+ches = read.csv(here::here("data", "ches1419.csv"))
+ess9 = read.csv(here::here("data", "ess9_ches.csv"))
+ess10 = read.csv(here::here("data", "ess10_ches.csv"))
+ess = rbind(ess9, ess10)
+```
+
+
+
+#data structure and merge
+```{r}
+ess = ess[ , c("party", "country", "essround", "idno", 
+               "dweight", "anweight", "pweight", "lrscale",
+                 "status", "age", "gender", "vote",
+                 "religion", "education", "impol1", "impol2",
+                  "impol3", "imbgeco", "imueclt", "imwbcnt", "stfdem" ,
+               "dscrgrp", "dscrrce", "dscrntn", "dscrrlg", "dscretn")]
+
+ches = rename(ches, voteshare = vote)
+ess_ches = merge(ess, ches, by = c("party", "country"), all.x = TRUE)
+ess_ches = subset(ess_ches, !is.na(party) & party != "")
+colnames(ess_ches)
+
+#write.csv(ess_ches,"D:/GitHub/voters_immigration/data/ess_ches.csv", row.names = FALSE)
+write.csv(ess_ches, file = here("data", "ess_ches.csv"), row.names = FALSE)
+
+```
+

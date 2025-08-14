@@ -1,0 +1,5 @@
+"0","#vote - Voted last national election"
+"0","ess_raw = ess_raw[(ess_raw$vote == ""1""), ]"
+"0",""
+"0","#left-right ideology"
+"0","ess_raw = ess_raw[!(ess_raw$lrscale >10), ]"

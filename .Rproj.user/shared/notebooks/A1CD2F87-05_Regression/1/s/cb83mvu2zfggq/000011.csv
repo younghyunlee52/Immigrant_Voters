@@ -1,0 +1,100 @@
+"0","combined_means2 <- mean_immpol_wide %>%"
+"0","  left_join(mean_imatt_wide, by = ""country"") %>%"
+"0","  left_join(mean_lrscale_wide, by = ""country"") %>%"
+"0","  mutate(across(starts_with(""mean_""), ~ round(.x, 2)))"
+"0",""
+"0","# Convert to LaTeX table"
+"0","latex_table <- combined_means %>%"
+"0","  knitr::kable(format = ""latex"", booktabs = TRUE)"
+"0",""
+"0","# Print the LaTeX code for the table"
+"0","cat(latex_table)"
+"1","
+\begin{tabular}{llrrr}
+\toprule
+country & status & mean\_immpol & mean\_imatt & mean\_lrscale\\
+\midrule
+AT & native & 1.50 & 4.84 & 4.85\\
+AT & first & 1.62 & 4.84 & 4.85\\
+AT & second & 1.64 & 4.84 & 4.85\\
+BE & native & 1.91 & 5.69 & 5.09\\
+BE & first & 1.88 & 5.69 & 5.09\\
+\addlinespace
+BE & second & 2.02 & 5.69 & 5.09\\
+BG & native & 1.49 & 4.85 & 5.49\\
+BG & first & 1.53 & 4.85 & 5.49\\
+BG & second & 1.51 & 4.85 & 5.49\\
+CY & native & 1.19 & 4.08 & 5.64\\
+\addlinespace
+CY & first & 1.25 & 4.08 & 5.64\\
+CY & second & 0.93 & 4.08 & 5.64\\
+CZ & native & 1.03 & 4.15 & 5.70\\
+CZ & first & 1.22 & 4.15 & 5.70\\
+CZ & second & 1.15 & 4.15 & 5.70\\
+\addlinespace
+DE & native & 2.06 & 5.96 & 4.39\\
+DE & first & 1.84 & 5.96 & 4.39\\
+DE & second & 2.17 & 5.96 & 4.39\\
+DK & native & 1.79 & 5.94 & 4.58\\
+DK & first & 2.08 & 5.94 & 4.58\\
+\addlinespace
+DK & second & 1.98 & 5.94 & 4.58\\
+EE & native & 1.62 & 5.19 & 5.72\\
+EE & first & 1.44 & 5.19 & 5.72\\
+EE & second & 1.59 & 5.19 & 5.72\\
+ES & native & 1.93 & 6.06 & 4.40\\
+\addlinespace
+ES & first & 1.99 & 6.06 & 4.40\\
+ES & second & 2.04 & 6.06 & 4.40\\
+FI & native & 1.71 & 6.47 & 5.72\\
+FI & first & 2.06 & 6.47 & 5.72\\
+FI & second & 1.85 & 6.47 & 5.72\\
+\addlinespace
+FR & native & 1.86 & 5.54 & 5.12\\
+FR & first & 1.87 & 5.54 & 5.12\\
+FR & second & 1.94 & 5.54 & 5.12\\
+GB & native & 1.91 & 6.22 & 5.01\\
+GB & first & 2.12 & 6.22 & 5.01\\
+\addlinespace
+GB & second & 1.97 & 6.22 & 5.01\\
+HR & native & 1.73 & 5.27 & 5.04\\
+HR & first & 1.84 & 5.27 & 5.04\\
+HR & second & 1.91 & 5.27 & 5.04\\
+HU & native & 0.94 & 4.03 & 5.99\\
+\addlinespace
+HU & first & 1.33 & 4.03 & 5.99\\
+HU & second & 0.95 & 4.03 & 5.99\\
+IE & native & 1.83 & 6.37 & 5.25\\
+IE & first & 2.12 & 6.37 & 5.25\\
+IE & second & 2.05 & 6.37 & 5.25\\
+\addlinespace
+IT & native & 1.66 & 4.67 & 5.27\\
+IT & first & 1.94 & 4.67 & 5.27\\
+IT & second & 2.08 & 4.67 & 5.27\\
+LT & native & 1.75 & 5.29 & 5.30\\
+LT & first & 1.88 & 5.29 & 5.30\\
+\addlinespace
+LT & second & 1.84 & 5.29 & 5.30\\
+NL & native & 1.86 & 6.04 & 5.13\\
+NL & first & 1.96 & 6.04 & 5.13\\
+NL & second & 2.04 & 6.04 & 5.13\\
+PL & native & 1.41 & 5.95 & 5.91\\
+\addlinespace
+PL & first & 1.00 & 5.95 & 5.91\\
+PL & second & 1.53 & 5.95 & 5.91\\
+PT & native & 1.89 & 6.21 & 4.79\\
+PT & first & 2.04 & 6.21 & 4.79\\
+PT & second & 2.00 & 6.21 & 4.79\\
+\addlinespace
+SE & native & 2.19 & 6.45 & 5.19\\
+SE & first & 2.04 & 6.45 & 5.19\\
+SE & second & 2.26 & 6.45 & 5.19\\
+SI & native & 1.64 & 4.91 & 4.87\\
+SI & first & 1.77 & 4.91 & 4.87\\
+\addlinespace
+SI & second & 1.98 & 4.91 & 4.87\\
+SK & native & 1.11 & 3.88 & 4.88\\
+SK & first & 1.30 & 3.88 & 4.88\\
+SK & second & 0.95 & 3.88 & 4.88\\
+\bottomrule
+\end{tabular}"

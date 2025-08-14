@@ -1,0 +1,507 @@
+---
+title: "Immigrant voters"
+output: html_document
+date: "2022-10-08"
+---
+#Relevant Datasets
+- https://ess-search.nsd.no/en/study/bdc7c350-1029-4cb3-9d5e-53f668b8fa74
+- https://static1.squarespace.com/static/5975c9bfdb29d6a05c65209b/t/62e9612a9090ba609c4b8693/1659461930880/1999-2019_CHES_codebook.pd
+
+#packages
+```{r}
+library(readr)
+library(base)
+library(here)
+library(dplyr)
+library(xtable)
+library(stargazer)
+```
+
+#loading data
+```{r}
+ches = read.csv(here::here("data", "ches1419.csv"))
+ess = read.csv(here::here("data", "ess_cleaned.csv"))
+ess$country = NA
+ess$country = ess$cntry
+
+#data structure
+colnames(ches)
+# country, year, party, electionyear, lrgen, galtan, immigrate_policy
+table(ches$country)
+table(ess$cntry)
+```
+
+# dividing dataset
+I am subsetting datasets for both ESS and CHES because CHES has two years (2014 and 2019) and it gets complicated if I put them all together.
+```{r}
+#dataset that will use ches2019
+ches_2019 <- ches[ches$year == 2019, ]
+ches_2014 <- ches[ches$year == 2014, ]
+ess9 = ess[ess$essround %in% 9, ]
+ess10 = ess[ess$essround %in% 10, ]
+```
+
+```{r}
+# Create unique identifiers for party-country combinations in both datasets
+ches_2019$party_country <- paste(ches_2019$party, ches_2019$country, sep = "_")
+ches_2014$party_country <- paste(ches_2014$party, ches_2014$country, sep = "_")
+
+# Find overlapping party-country combinations
+overlap_parties <- intersect(ches_2019$party_country, ches_2014$party_country)
+
+# Count the number of overlapping parties
+num_overlap_parties <- length(overlap_parties)
+print(overlap_parties)
+```
+
+
+#party position coding (based on 2019 CHES)
+Let's do step by step. Otherwise, you will burn out. 
+1. each country's party list column are coded as numeric.
+2. let's change it to party name.
+3. let's coalsce those party names into one column party
+4. let's match based on party name and country and add party details. 
+
+#ESS Round 9
+#changing party name (1): Austria, Belgium, Bulgaria, Cyprus, Czech, Germany, Denmark
+```{r}
+# austria
+table(ches_2019$party[ches_2019$country == "AT"])
+#prtvtcat
+table(ess9$prtvtcat) #Round 9: 2017 legislative election
+at_prtvtcat <- c("SPO", "OVP", "FPO",  "PILZ", "Grune", "KPO", "NEOS", "GILT")
+ess9$at9 = at_prtvtcat[ess9$prtvtcat]
+sort(table(ess9$at9[ess9$cntry == "AT"], useNA = "always"), decreasing = TRUE)
+
+# belgium
+table(ches_2019$party[ches_2019$country == "BE"])
+## prtvtebe (r9)
+table(ess9$prtvtdbe) #last election was in 2019
+be_prtvtdbe = c("AGALEV", "CDV", "VU/NVA", "LDD", "SP/SPA", "PVDA-PTB", 
+                "VB", "VLD/PVV", "PSC/CDH", "ECOLO", "FN", "PRL/MR", "PS",
+                "PVDA-PTB", "PP")
+ess9$be9 = be_prtvtdbe[ess9$prtvtdbe]
+table(ess9$be9[ess9$cntry == "BE"], useNA = "always")
+
+#Bulgaria
+table(ches_2019$party[ches_2019$country == "BG"])
+## prtvtdbg(R9)
+table(ess9$prtvtdbg)
+bg_prtvtdbg = c("GERB", "BSP", "NFSP", "DPS", "Volya", "Reform", "KDB", "DOST",
+                "DSB", "ABV", "Vuzrazhdane")
+ess9$bg9 = bg_prtvtdbg[ess9$prtvtdbg]
+table(ess9$bg9[ess9$cntry == "BG"], useNA = "always")
+
+#Cyprus
+table(ches_2019$party[ches_2019$country == "CY"])
+
+##prtvtbcy 
+table(ess9$prtvtbcy)
+cy_prtvtbcy = c("AKEL", "DIKO", "DISY", "ELAM", "KINHMA", "Green", "SYM", "EDEK")
+ess9$cy9 = cy_prtvtbcy[ess9$prtvtbcy]
+sort(table(ess9$cy9[ess9$cntry == "CY"], useNA = "always"), decreasing = TRUE)
+
+#Czech #prtvtecz
+table(ches_2019$party[ches_2019$country == "CZ"])
+table(ess9$prtvtecz)
+cz_prtvtecz = c("KSCM", "CSSD", "TOP09", "ANO2011", "ODS", "KDU-CSL", "Pirates", "SPD", "STAN")
+ess9$cz9 = cz_prtvtecz[ess9$prtvtecz]
+table(ess9$cz9[ess9$cntry == "CZ"], useNA = "always")
+
+#Germany #prtvede1
+table(ches_2019$party[ches_2019$country == "DE"])
+table(ess9$prtvede1) #Round 10 NO
+de_prtvede1 = c("CDU", "SPD", "LINKE", "GRUNEN", "FDP", "AfD", "Piraten", NA)
+ess9$de9 = de_prtvede1[ess9$prtvede1]
+table(ess9$de9[ess9$cntry == "DE"], useNA = "always")
+
+#Denmark #prtvtddk
+table(ches_2019$party[ches_2019$country == "DK"])
+table(ess9$prtvtddk)
+dk_prtvtddk = c("SD", "RV", "KF", "SF", "DF", "KRF", "V", "LA", "EL", "A")
+ess9$dk9 = dk_prtvtddk[ess9$prtvtddk]
+table(ess9$dk9[ess9$cntry == "DK"], useNA = "always")
+```
+
+#changing party name (2): Estonia, Spain, Finland, France, UK, Croatia, Ireland, Hungary 
+```{r}
+#Estonia 
+table(ches_2019$party[ches_2019$country == "EE"])
+table(ess9$prtvtgee) #2019 parliamentary election
+ee_prtvtgee = c("ER", "EK", "IRL", "SDE", "EER", "EKRE") #Isamaa Erakond as EKRE
+ess9$ee9 = ee_prtvtgee[ess9$prtvtgee]
+table(ess9$ee9[ess9$cntry == "EE"], useNA = "always")
+
+#Spain 
+table(ches_2019$party[ches_2019$country == "ES"])
+table(ess9$prtvtees) 
+es_prtvtees = c("PPP", "PSOE", "Podemos", NA, "Cs", NA, "", "Pais", "", "ERC",
+                "PdeCat", "BNG", "PNV", "EHB", "CC", "Vox", "","", "", "") 
+ess9$es9 = es_prtvtees[ess9$prtvtees]
+table(ess9$es9[ess9$cntry == "ES"], useNA = "always")
+
+#Finland 
+table(ches_2019$party[ches_2019$country == "FI"])
+#prtvtdfi 
+table(ess9$prtvtdfi)
+fi_prtvtdfi = c("KOK", "SFP", "KESK", "PS", "KD", NA, NA, NA, 
+                NA, "VIHR", "SDP", "VAS", NA, NA, NA, NA)
+ess9$fi9 = fi_prtvtdfi[ess9$prtvtdfi]
+table(ess9$fi9[ess9$cntry == "FI"], useNA = "always")
+
+#France #prtvtdfr
+table(ches_2019$party[ches_2019$country == "FR"])
+#prtvtdfr
+table(ess9$prtvtdfr)
+fr_prtvtdfr = c("LO-LCR", "NPA", "PCF", "FI", "PS", "EELV", "LREM", "MODEM",
+                "LR", "DLF", "RN")
+ess9$fr9 = fr_prtvtdfr[ess9$prtvtdfr]
+table(ess9$fr9[ess9$cntry == "FR"], useNA = "always")
+
+#UK #prtvtcgb
+table(ches_2019$party[ches_2019$country == "GB"])
+table(ess9$prtvtcgb) 
+gb_prtvtcgb = c("CONS", "LAB", "LIBDEM", "SNP", "PLAID", "GREEN", "UKIP")
+ess9$gb9 = gb_prtvtcgb[ess9$prtvtcgb]
+table(ess9$gb9[ess9$cntry == "GB"], useNA = "always")
+
+#Croatia #prtvtahr
+table(ches_2019$party[ches_2019$country == "HR"])
+table(ess9$prtvtahr) 
+hr_prtvtahr = c("HDZ", "SDP", "Most", "ZZ", 
+                "MB 365", "IDS", "HDSSB", "SDSS", NA)
+
+ess9$hr9 = hr_prtvtahr[ess9$prtvtahr]
+table(ess9$hr9[ess9$cntry == "HR"], useNA = "always")
+
+#Hungary#NO
+table(ches_2019$party[ches_2019$country == "HU"])
+table(ess9$prtvtfhu)
+hu_prtvtfhu = c("DK", "E14", "Fidesz-KDNP", "Jobbik", "Fidesz-KDNP", "LMP", "MSZP", "Magyar", "MM", "", "MKKP")
+ess9$hu9 = hu_prtvtfhu[ess9$prtvtfhu]
+table(ess9$hu9[ess9$cntry == "HU"], useNA = "always")
+
+#Ireland 
+table(ches_2019$party[ches_2019$country == "IE"])
+table(ess9$prtvtcie) #2020 general election
+ie_prtvtcie = c("S-PBP", "FF", "FG", "GP", "Independent", "Lab",
+                "SF", "DS", "SP")
+
+ess9$ie9 = ie_prtvtcie[ess9$prtvtcie]
+table(ess9$ie9[ess9$cntry == "IE"], useNA = "always")
+```
+
+# changing party name (3): Italy, Lithuania, Latvia, Netherlands, Poland, Portugal, Sweden, Slovenia, Slovakia 
+```{r}
+#Italy 
+table(ches_2019$party[ches_2019$country == "IT"])
+#prtvtdit #R9
+table(ess9$prtvtcit)
+it_prtvtcit = c("PD", "Europa", "IEI", "CPL", NA, "LEU",
+                "M5S", "FI", "LN", "FdI", "UDC", "PAP",
+                "CI")
+
+ess9$it9 = it_prtvtcit[ess9$prtvtcit]
+table(ess9$it9[ess9$cntry == "IT"], useNA = "always")
+
+#Lithuania 
+table(ches_2019$party[ches_2019$country == "LT"])
+table(ches_2014$party[ches_2014$country == "LT"])
+
+#prtvblt1
+table(ess9$prtvblt1) #2020 parliamentary election 
+lt_prtvblt1 = c("LSDP", "TS-LKD", "LRLS", "", "TT",
+                "LVZS", "LRLS", "DP", "DK", "LLP", "LLRA", "LZP",
+                "LS", "LCP")
+
+#Freedom party led by former liberal movement member --> LRLS
+#first vote
+ess9$lt9 = lt_prtvblt1[ess9$prtvblt1]
+table(ess9$lt9[ess9$cntry == "LT"], useNA = "always")
+
+#Latvia: NO
+
+#Netherlands 
+table(ches_2019$party[ches_2019$country == "NL"])
+table(ess9$prtvtgnl)
+nl_prtvtgnl = c("VVD", "PvdA", "PVV", "SP", "CDA", "D66",
+                "CU", "GL", "SGP", "PVdD", "50PLUS", 
+                "DENK", "FvD", "Article1")
+ess9$nl9 = nl_prtvtgnl[ess9$prtvtgnl]
+sort(table(ess9$nl9[ess9$cntry == "NL"], useNA = "always"), decreasing = TRUE)
+
+#poland: NO
+table(ches_2019$party[ches_2019$country == "PL"])
+table(ess9$prtvtdpl) 
+pl_prtvtdpl = c("Korwin", "Kukiz", "Nowo", "PO", "PSL",
+                "PiS", "Lewica Razem", "SLD")
+
+ess9$pl9 = pl_prtvtdpl[ess9$prtvtdpl]
+sort(table(ess9$pl9[ess9$cntry == "PL"], useNA = "always"), decreasing = TRUE)
+
+#Portugal 
+table(ches_2019$party[ches_2019$country == "PT"])
+table(ess9$prtvtcpt)
+pt_prtvtcpt = c(NA, "BE", "CDU", NA, "LTDA", 
+                NA, "PPV", "PCTP", NA, "PAN", 
+                "PCP", NA, "PS", "PURP", "PAN", 
+                "CDS/PP", NA, NA)
+ess9$pt9 = pt_prtvtcpt[ess9$prtvtcpt]
+sort(table(ess9$pt9[ess9$cntry == "PT"], useNA = "always"), decreasing = TRUE)
+
+#Sweden: NO
+table(ches_2019$party[ches_2019$country == "SE"])
+table(ess9$prtvtcse) 
+se_prtvtcse = c("C", "L", "KD", "MP", "M", "S/SAP",
+                "V", "FI", "SD", "Annat")
+
+ess9$se9 = se_prtvtcse[ess9$prtvtcse]
+sort(table(ess9$se9[ess9$cntry == "SE"], useNA = "always"), decreasing = TRUE)
+
+
+#slovenia
+table(ches_2019$party[ches_2019$country == "SI"])
+table(ess9$prtvtfsi) #Round 10: 2018
+si_prtvtfsi = c("DeSUS", "Levica", "LMS", "NSI", "Pozitivna",
+                "SD", "AB", "SDS", "SLS", "SMC", "SNS")
+ess9$si9 = si_prtvtfsi[ess9$prtvtfsi]
+sort(table(ess9$si9[ess9$cntry == "SI"], useNA = "always"), decreasing = TRUE)
+
+#Slovakia 
+table(ches_2019$party[ches_2019$country == "SK"])
+#prtvtdsk
+table(ess9$prtvtdsk)
+sk_prtvtdsk = c("OLaNO", "SNS", "Smer-SD", "MH", "LSNS",
+                "SaS", "Siet", "Sme Rodina")
+ess9$sk9 = sk_prtvtdsk[ess9$prtvtdsk]
+sort(table(ess9$sk9[ess9$cntry == "SK"], useNA = "always"), decreasing = TRUE)
+```
+
+```{r}
+#making a new column
+ess9$party = NA
+library(dplyr)
+
+# Assuming ess9 is your dataframe
+ess9 <- ess9 %>%
+  mutate(party = coalesce(at9, be9, bg9, cz9, de9, dk9, ee9, es9, fi9, fr9,
+                          gb9, hr9, hu9, ie9, it9, lt9, nl9, pl9, pt9, se9,
+                          si9, sk9, cy9)) %>%
+  select(-at9, -be9, -bg9, -cz9, -de9, -dk9, -ee9, -es9, -fi9, -fr9,
+         -gb9, -hr9, -hu9, -ie9, -it9, -lt9, -nl9, -pl9, -pt9, -se9,
+         -si9, -sk9, -cy9)
+
+table(ess9$party, useNA= "always")
+table(ess9$country[is.na(ess9$party)])
+
+#write.csv(ess9,"D:/GitHub/voters_immigration/data/ess9_ches.csv", row.names = FALSE)
+write.csv(ess9, file = here("data", "ess9_ches.csv"), row.names = FALSE)
+
+table(ess9$status)
+```
+
+#ESS Round 10
+
+#changing party name (1): Austria, Belgium, Bulgaria, Cyprus, Czech, Germany, Denmark, Estonia, Spain, Finland, France
+```{r}
+# austria: NO
+table(ches_2019$party[ches_2019$country == "AT"])
+table(ess10$prtvtcat) #Round 10 NO
+
+# belgium
+table(ches_2019$party[ches_2019$country == "BE"])
+## prtvtebe (r10)
+table(ess10$prtvtebe) #last election was in 2019
+be_prtvtebe = c("AGALEV", "CDV", "VU/NVA", "SP/SPA", "PVDA-PTB", "VB", "VLD/PVV", 
+                "PSC/CDH", "ECOLO", "PRL/MR", "PS", "PVDA-PTB")
+ess10$be10 = be_prtvtebe[ess10$prtvtebe]
+table(ess10$be10[ess10$cntry == "BE"], useNA = "always")
+
+#Bulgaria
+table(ches_2019$party[ches_2019$country == "BG"])
+## prtvtebg(R10)
+
+table(ess10$prtvtebg) 
+bg_prtvtebg = c("GERB", "BSP", "DPS", "DB", "Slavi Trifonov", "BMRO", "NFSB", "Ataka",
+                "Vazrazhdane", "ISMV", "Republikantsi")
+#ITN politician is Slavi Trifonov... 
+ess10$bg10 = bg_prtvtebg[ess10$prtvtebg]
+sort(table(ess10$bg10), decreasing = TRUE)
+
+
+#Cyprus: NO
+table(ches_2019$party[ches_2019$country == "CY"])
+table(ess10$prtvtccy) #Round 10 NO
+
+#Czech #prtvtecz
+table(ches_2019$party[ches_2019$country == "CZ"])
+table(ess10$prtvtecz)
+cz_prtvtecz = c("KSCM", "CSSD", "TOP09", "ANO2011", "ODS", "KDU-CSL", "Pirates", "SPD", "STAN")
+ess10$cz10 = cz_prtvtecz[ess10$prtvtecz]
+table(ess10$cz10[ess10$cntry == "CZ"], useNA = "always")
+
+#Germany: NO
+table(ches_2019$party[ches_2019$country == "DE"])
+table(ess10$prtvfde1) #Round 10 NO
+
+#Denmark: NO
+
+#Estonia 
+table(ches_2019$party[ches_2019$country == "EE"])
+#prtvthee (R10)
+table(ess10$prtvthee) #2019 parliamentary election
+ee_prtvthee = c("ER", "EK", "EKRE", "SDE", "EER", "EKRE", NA, 
+                NA, NA, NA, NA, NA, NA, "E200") #Isamaa Erakond as EKRE
+ess10$ee10 = ee_prtvthee[ess10$prtvthee]
+table(ess10$ee10[ess10$cntry == "EE"], useNA = "always")
+
+#Spain #NO
+table(ches_2019$party[ches_2019$country == "ES"])
+table(ess10$prtvtfes) # R10 not
+
+#Finland 
+table(ches_2019$party[ches_2019$country == "FI"])
+#prtvtefi (R10) #2019 parliamentary election
+table(ess10$prtvtefi)
+fi_prtvtefi = c("KOK", "SFP", "KESK", NA, "PS", NA, "KD", 
+                "Movement", NA, "Pirate", NA, NA, NA, NA, NA, "VIHR", "SDP", "VAS", "Communist")
+ess10$fi10 = fi_prtvtefi[ess10$prtvtefi]
+table(ess10$fi10[ess10$cntry == "FI"], useNA = "always")
+
+#France #prtvtdfr
+table(ches_2019$party[ches_2019$country == "FR"])
+#prtvtefr (R10)
+table(ess10$prtvtefr)
+fr_prtvtefr = c("Lutte", "NPA", "PCF", "FI", "PS","EELV", "LREM", "MoDem", "LR", "DLF",
+                "RN")
+ess10$fr10 = fr_prtvtefr[ess10$prtvtefr]
+table(ess10$fr10[ess10$cntry == "FR"], useNA = "always")
+```
+
+#changing party name (2): UK, Croatia, Ireland, Hungary, Italy, Lithuania, Latvia
+```{r}
+#UK #prtvtcgb
+table(ches_2019$party[ches_2019$country == "GB"])
+table(ess10$prtvtdgb) #round 10
+gb_prtvtdgb = c("CONS", "LAB", "LIBDEM", "SNP", "PLAID", "GREEN", "UKIP", "BREXIT")
+ess10$gb10 = gb_prtvtdgb[ess10$prtvtdgb]
+table(ess10$gb10[ess10$cntry == "GB"], useNA = "always")
+
+#Croatia #prtvtahr
+table(ches_2019$party[ches_2019$country == "HR"])
+table(ess10$prtvtbhr) #round 10 #2020 parliamentary election
+hr_prtvtbhr = c("HDZ", "SDP", "HKS", "Most", "Mozemo", "Fokus", "NS-R", "HNS", "SDSS") #CHES does not have data for 5,6
+ess10$hr10 = hr_prtvtbhr[ess10$prtvtbhr]
+table(ess10$hr10[ess10$cntry == "HR"], useNA = "always")
+
+#Hungary 
+table(ches_2019$party[ches_2019$country == "HU"])
+table(ess10$prtvtghu) #round 10 #2018 parliamentary election
+hu_prtvtghu = c("DK", "E14", "Fidesz-KDNP", "Jobbik", "Fidesz-KDNP", "LMP", "MSZP", "Magyar", "MM", "MKKP")
+ess10$hu10 = hu_prtvtghu[ess10$prtvtghu]
+table(ess10$hu10[ess10$cntry == "HU"], useNA = "always")
+
+#Ireland 
+table(ches_2019$party[ches_2019$country == "IE"])
+#prtvtdie (R10)
+table(ess10$prtvtdie) #2020 general election
+ie_prtvtdie = c("FF", "FG", "Lab", "SF", "Independent", 
+                "GP", "Socialist", "S-PBP", "RI", "Aontu", "I4C", "DS", "Worker")
+ess10$ie10 = ie_prtvtdie[ess10$prtvtdie]
+table(ess10$ie10[ess10$cntry == "IE"], useNA = "always")
+
+#Italy 
+table(ches_2019$party[ches_2019$country == "IT"])
+#prtvtdit #R10
+table(ess10$prtvtdit)
+it_prtvtdit = c("M5S", "PD", "LN", "FI", "FdI", "LEU", "Europa", "UDC", "Potere", 
+                "Casapound", "IEI", "IPDF", NA, "SVP")
+ess10$it10 = it_prtvtdit[ess10$prtvtdit]
+table(ess10$it10[ess10$cntry == "IT"], useNA = "always")
+
+#Lithuania 
+table(ches_2019$party[ches_2019$country == "LT"])
+#prtvclt1
+table(ess10$prtvclt1) #2020 parliamentary election 
+lt_prtvclt1 = c("DK", "LT", "LRLS", "LLP", "TS-LKD", "CPT", "NS", "LLRA", "LSDP", 
+                "KSSL", "LV", "LRLS", "LVZS", "LZP", "KS", "DP", "LSDP", "LS")
+#Freedom party led by former liberal movement member --> LRLS
+ess10$lt10 = lt_prtvclt1[ess10$prtvclt1]
+table(ess10$lt10[ess10$cntry == "LT"], useNA = "always")
+
+#Latvia: NO
+table(ches_2019$party[ches_2019$country == "LV"])
+table(ess10$lv_prtvtalv) #No Round10
+```
+
+# changing party name (3): Netherlands, Poland, Portugal, Sweden, Slovenia, Slovakia 
+```{r}
+#Netherlands 
+table(ches_2019$party[ches_2019$country == "NL"])
+#prtvthnl #Round 10 #2021 Dutch general election
+table(ess10$prtvthnl)
+nl_prtvthnl = c("VVD", "PvdA", "PVV", "SP", "CDA", "D66",
+                "CU", "GL", "SGP", "PVdD", "50PLUS", "DENK", "FvD", "Article1", "Volt", 
+                "JA21", "BBB")
+ess10$nl10 = nl_prtvthnl[ess10$prtvthnl]
+sort(table(ess10$nl10[ess10$cntry == "NL"], useNA = "always"), decreasing = TRUE)
+
+#poland: NO
+table(ches_2019$party[ches_2019$country == "PL"])
+#prtvtepl 
+table(ess10$prtvtepl) #NO Round 10
+
+#Portugal 
+table(ches_2019$party[ches_2019$country == "PT"])
+#prtvtdpt
+table(ess10$prtvtdpt)
+pt_prtvtdpt = c(NA, "BE", "CDS/PP", "CHEGA", "IL", NA, "Livre", 
+                NA, NA, NA, "PAN", "PCP", NA, NA, NA, "PSD", NA, "PS",
+                NA, NA, "PURP")
+ess10$pt10 = pt_prtvtdpt[ess10$prtvtdpt]
+sort(table(ess10$pt10[ess10$cntry == "PT"], useNA = "always"), decreasing = TRUE)
+
+#Sweden: NO
+table(ches_2019$party[ches_2019$country == "SE"])
+table(ess10$prtvtdse) #NO ROUND 10
+
+#slovenia
+table(ches_2019$party[ches_2019$country == "SI"])
+table(ess10$prtvtfsi) #Round 10: 2018
+si_prtvtfsi = c("DeSUS", "Levica", "LMS", "NSI", "Pozitivna",
+                "SD", "AB", "SDS", "SLS", "SMC", "SNS")
+ess10$si10 = si_prtvtfsi[ess10$prtvtfsi]
+sort(table(ess10$si10[ess10$cntry == "SI"], useNA = "always"), decreasing = TRUE)
+
+#Slovakia 
+table(ches_2019$party[ches_2019$country == "SK"])
+#prtvtesk (Round 10): 2020 Parliamentary Election
+table(ess10$prtvtesk)
+sk_prtvtesk = c("OLaNO", "Smer-SD", "Sme Rodina", "LSNS", "PS", "SaS",
+                "Za Ludi")
+ess10$sk10 = sk_prtvtesk[ess10$prtvtesk]
+sort(table(ess10$sk10[ess10$cntry == "SK"], useNA = "always"), decreasing = TRUE)
+```
+
+
+```{r}
+#making a new column
+ess10$party = NA
+ess10 <- ess10 %>%
+  mutate(party = coalesce(be10, bg10, cz10, ee10, fi10, fr10, gb10, hr10, hu10, ie10,
+                          it10, lt10, nl10, pt10, si10, sk10)) %>%
+  select(-be10, -bg10, -cz10, -ee10, -fi10, -fr10, -gb10, -hr10, -hu10, -ie10,
+         -it10, -lt10, -nl10, -pt10, -si10, -sk10)
+
+#table(ess10$party, useNA= "always")
+table(ess10$country[is.na(ess10$party)])
+
+#write.csv(ess10,"D:/GitHub/voters_immigration/data/ess10_ches.csv", row.names = FALSE)
+write.csv(ess10, file = here("data", "ess10_ches.csv"), row.names = FALSE)
+
+table(ess10$status)
+colnames(ess10)
+```
+
+
+

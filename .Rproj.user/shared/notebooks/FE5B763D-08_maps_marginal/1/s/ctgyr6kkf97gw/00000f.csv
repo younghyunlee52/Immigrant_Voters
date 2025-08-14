@@ -1,0 +1,4 @@
+"0","Europe4 <- readRDS(""Europe4.rds"")"
+"0","Europe2 <- readRDS(""Europe2.rds"")"
+"0","essaggdat_anti2 <- readRDS(""essaggdat_anti2.rds"")"
+"0","ess_sub <- readRDS(""ess_sub.rds"")"

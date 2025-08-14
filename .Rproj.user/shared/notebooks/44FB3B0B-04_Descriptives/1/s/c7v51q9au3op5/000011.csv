@@ -1,0 +1,5 @@
+"0","ess_ches = read.csv(here::here(""data"", ""ess_ches.csv""))"
+"0",""
+"0","# Load required libraries"
+"0","library(reshape2)"
+"0","library(ggplot2)"

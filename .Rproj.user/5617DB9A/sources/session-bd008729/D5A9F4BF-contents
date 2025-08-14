@@ -1,0 +1,35 @@
+% latex table generated in R 4.4.2 by xtable 1.8-4 package
+% Wed Aug 13 23:04:39 2025
+\begin{table}[ht]
+\centering
+\begin{tabular}{rrrr}
+  \hline
+ & first & native & second \\ 
+  \hline
+AT &  55 & 1295 & 113 \\ 
+  BE & 136 & 1558 & 160 \\ 
+  BG &   5 & 1599 &  31 \\ 
+  CY &   4 & 234 &   9 \\ 
+  CZ &  44 & 2191 & 155 \\ 
+  DE &  73 & 1282 & 106 \\ 
+  DK &  21 & 761 &  41 \\ 
+  EE & 126 & 1318 & 271 \\ 
+  ES &  28 & 697 &  24 \\ 
+  FI &  28 & 2103 &  34 \\ 
+  FR &  96 & 1311 & 152 \\ 
+  GB & 147 & 1764 & 180 \\ 
+  HR & 138 & 1169 & 151 \\ 
+  HU &   6 & 890 &  21 \\ 
+  IE & 106 & 1776 &  94 \\ 
+  IT &  23 & 1924 &  25 \\ 
+  LT &  16 & 1152 &  56 \\ 
+  NL &  89 & 1797 & 152 \\ 
+  PL &   4 & 599 &  26 \\ 
+  PT &  38 & 1062 &  31 \\ 
+  SE & 114 & 978 & 115 \\ 
+  SI &  63 & 875 &  81 \\ 
+  SK &  10 & 1149 &  41 \\ 
+   \hline
+\end{tabular}
+\caption{Distribution of Status by Country} 
+\end{table}

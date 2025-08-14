@@ -1,0 +1,8 @@
+"0","library(rnaturalearth)"
+"0","library(rnaturalearthdata)"
+"0","library(sf)"
+"0","world <- ne_countries(scale = ""medium"", returnclass = ""sf"")"
+"0","Europe <- world[which(world$continent == ""Europe""),]"
+"0","world_map = map_data(""world"") %>% "
+"0","  filter(! long > 180)"
+"0","#table(world_map$region)"

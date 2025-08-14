@@ -1,0 +1,6 @@
+"0","ess_ches = read.csv(here::here(""data"", ""ess_ches.csv""))"
+"0","length(table(ess_ches$party[ess_ches$immigrate_policy>7]))"
+"1","[1]"
+"1"," 62"
+"1","
+"

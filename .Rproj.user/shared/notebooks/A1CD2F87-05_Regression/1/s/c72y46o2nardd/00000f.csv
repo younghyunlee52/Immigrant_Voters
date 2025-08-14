@@ -1,0 +1,39 @@
+"0","subplot1 = ggplot(ess_ches) + "
+"0","  geom_density(aes(imatt, fill=status),alpha=0.5) + "
+"0","  labs(x=""Immigrant attitude"", y="""") +"
+"0","  theme_bw()+  theme(text=element_text(size=13))"
+"0",""
+"0","subplot2 = ggplot(ess_ches) + "
+"0","  geom_density(aes(immpol, fill=status),alpha=0.5,adjust=1.5) + "
+"0","  labs(x=""Immigration policy attitude"", y="""") +"
+"0","  theme_bw()+ theme(text=element_text(size=13))"
+"0",""
+"0","subplot3 = ggplot(ess_ches, aes(group=status)) + "
+"0","  geom_density(aes(lrscale, fill=status),alpha=0.5,adjust=1.5) + "
+"0","  labs(x=""Left-right scale"", y=""Density"") +"
+"0","  scale_fill_discrete(labels=c(""Native"",""First"",""Second""), name=""Status"")+"
+"0","  theme_bw() + theme(text=element_text(size=13))"
+"0",""
+"0",""
+"0","figure2 = ggarrange(subplot3,subplot1, subplot2, "
+"0","                        ncol=3, common.legend = T, legend=""bottom"")"
+"1","[1m[33mError[39m in `purrr::map()`:[22m
+[38;5;232m[36mℹ[38;5;232m In index: 1.[39m
+[1mCaused by error in `geom_density()`:[22m
+[38;5;232m[33m![38;5;232m Problem while computing aesthetics.
+[36mℹ[38;5;232m Error occurred in the 1st layer.[39m
+[1mCaused by error:[22m
+[33m![39m object 'imatt' not found
+Backtrace:
+[90m  1. [39m[1mggpubr[22m::ggarrange(...)
+[90m  2. [39m[1m[94mpurrr::map([39m[22m...[1m[94m)[39m[22m
+[90m  3. [39mpurrr:::map_(""list"", .x, .f, ..., .progress = .progress)
+[90m  7. [39m[1mggpubr[22m (local) .f(.x[[i]], ...)
+[90m  8. [39m[1mcowplot[22m::plot_grid(plotlist = plotlist, ...)
+     ...
+[90m 29. [39mggplot2 (local) f(l = layers[[i]], d = data[[i]])
+[90m 30. [39ml$compute_aesthetics(d, plot)
+[90m 31. [39mggplot2 (local) compute_aesthetics(..., self = self)
+[90m 32. [39m[1mbase[22m::lapply(aesthetics, eval_tidy, data = data, env = env)
+[90m 33. [39m[1mrlang[22m (local) FUN(X[[i]], ...)
+"

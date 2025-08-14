@@ -1,0 +1,11 @@
+"0","table(ess_ches$imatt)"
+"1","< table of extent"
+"1"," "
+"1","0"
+"1"," "
+"1",">
+"
+"0","# Fit logistic regression models for each group"
+"0","native_model = glm(anti_imm ~ imatt, data = subset(ess_ches, status == ""native""), family = binomial)"
+"2","Error in eval(predvars, data, env) : object 'anti_imm' not found
+"

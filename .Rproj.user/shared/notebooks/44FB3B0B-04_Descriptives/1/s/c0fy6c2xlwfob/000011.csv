@@ -1,0 +1,9 @@
+"0","
+sample = ess_ches %>%
+  mutate(
+    policy  = mean(immpol[ess_ches$status ==], na.rm = TRUE),
+"
+"2","Error: unexpected ']' in:
+""  mutate(
+    policy  = mean(immpol[ess_ches$status ==]""
+"

@@ -1,0 +1,523 @@
+---
+title: "Immigrant voters"
+output: html_document
+date: "2022-10-08"
+---
+
+
+```{r}
+ess_ches = read.csv(here::here("data", "ess_ches.csv"))
+
+# Load required libraries
+library(reshape2)
+library(ggplot2)
+```
+
+```{r}
+# Load necessary package
+library(xtable)
+
+# Create a cross-tabulation table with countries as rows and status as columns
+status_table <- table(ess_ches$country, ess_ches$status)
+
+# Convert to an xtable for LaTeX
+status_xtable <- xtable(as.data.frame.matrix(status_table), 
+                        caption = "Distribution of Status by Country")
+
+# Print the xtable in LaTeX format
+print(status_xtable, type = "latex", file = "status_table.tex")
+table(ess_ches$status)
+```
+
+#Country of Origin
+```{r}
+sort(table(ess_ches$cntbrthd[ess_ches$status == "first"]), decreasing = TRUE)
+ess_ches$origin = NA
+
+# Create a named vector for recoding
+origin_mapping <- c(
+  "1000" = "East Germany (DDR)",
+  "2000" = "USSR",
+  "3000" = "Czechoslovakia",
+  "4000" = "Yugoslavia",
+  "5000" = "East Timor",
+  "6000" = "Serbia and Montenegro",
+  "6500" = "Alien's passport",
+  "AD" = "Andorra", "AE" = "United Arab Emirates", "AF" = "Afghanistan",
+  "AG" = "Antigua and Barbuda", "AI" = "Anguilla", "AL" = "Albania",
+  "AM" = "Armenia", "AO" = "Angola", "AQ" = "Antarctica", "AR" = "Argentina",
+  "AS" = "American Samoa", "AT" = "Austria", "AU" = "Australia", "AW" = "Aruba",
+  "AX" = "Åland Islands", "AZ" = "Azerbaijan", "BA" = "Bosnia and Herzegovina",
+  "BB" = "Barbados", "BD" = "Bangladesh", "BE" = "Belgium", "BF" = "Burkina Faso",
+  "BG" = "Bulgaria", "BH" = "Bahrain", "BI" = "Burundi", "BJ" = "Benin",
+  "BL" = "Saint Barthélemy", "BM" = "Bermuda", "BN" = "Brunei Darussalam",
+  "BO" = "Bolivia", "BQ" = "Bonaire, Sint Eustatius and Saba", "BR" = "Brazil",
+  "BS" = "Bahamas", "BT" = "Bhutan", "BV" = "Bouvet Island", "BW" = "Botswana",
+  "BY" = "Belarus", "BZ" = "Belize", "CA" = "Canada", "CC" = "Cocos (Keeling) Islands",
+  "CD" = "Congo, The Democratic Republic of the", "CF" = "Central African Republic",
+  "CG" = "Congo", "CH" = "Switzerland", "CI" = "Côte d'Ivoire", "CK" = "Cook Islands",
+  "CL" = "Chile", "CM" = "Cameroon", "CN" = "China", "CO" = "Colombia",
+  "CR" = "Costa Rica", "CU" = "Cuba", "CV" = "Cabo Verde", "CW" = "Curaçao",
+  "CX" = "Christmas Island", "CY" = "Cyprus", "CZ" = "Czechia", "DE" = "Germany",
+  "DJ" = "Djibouti", "DK" = "Denmark", "DM" = "Dominica", "DO" = "Dominican Republic",
+  "DZ" = "Algeria", "EC" = "Ecuador", "EE" = "Estonia", "EG" = "Egypt",
+  "EH" = "Western Sahara", "ER" = "Eritrea", "ES" = "Spain", "ET" = "Ethiopia",
+  "FI" = "Finland", "FJ" = "Fiji", "FK" = "Falkland Islands", "FM" = "Micronesia",
+  "FO" = "Faroe Islands", "FR" = "France", "GA" = "Gabon", "GB" = "United Kingdom",
+  "GD" = "Grenada", "GE" = "Georgia", "GF" = "French Guiana", "GG" = "Guernsey",
+  "GH" = "Ghana", "GI" = "Gibraltar", "GL" = "Greenland", "GM" = "Gambia",
+  "GN" = "Guinea", "GP" = "Guadeloupe", "GQ" = "Equatorial Guinea", "GR" = "Greece",
+  "GT" = "Guatemala", "GU" = "Guam", "GW" = "Guinea-Bissau", "GY" = "Guyana",
+  "HK" = "Hong Kong", "HN" = "Honduras", "HR" = "Croatia", "HT" = "Haiti",
+  "HU" = "Hungary", "ID" = "Indonesia", "IE" = "Ireland", "IL" = "Israel",
+  "IN" = "India", "IQ" = "Iraq", "IR" = "Iran", "IS" = "Iceland", "IT" = "Italy",
+  "JM" = "Jamaica", "JO" = "Jordan", "JP" = "Japan", "KE" = "Kenya", "KG" = "Kyrgyzstan",
+  "KH" = "Cambodia", "KI" = "Kiribati", "KM" = "Comoros", "KR" = "South Korea",
+  "KW" = "Kuwait", "KZ" = "Kazakhstan", "LA" = "Laos", "LB" = "Lebanon",
+  "LC" = "Saint Lucia", "LI" = "Liechtenstein", "LK" = "Sri Lanka",
+  "LR" = "Liberia", "LS" = "Lesotho", "LT" = "Lithuania", "LU" = "Luxembourg",
+  "LV" = "Latvia", "LY" = "Libya", "MA" = "Morocco", "MD" = "Moldova",
+  "ME" = "Montenegro", "MG" = "Madagascar", "MK" = "North Macedonia",
+  "ML" = "Mali", "MM" = "Myanmar", "MN" = "Mongolia", "MT" = "Malta",
+  "MU" = "Mauritius", "MV" = "Maldives", "MX" = "Mexico", "MY" = "Malaysia",
+  "MZ" = "Mozambique", "NA" = "Namibia", "NE" = "Niger", "NG" = "Nigeria",
+  "NL" = "Netherlands", "NO" = "Norway", "NP" = "Nepal", "NZ" = "New Zealand",
+  "OM" = "Oman", "PA" = "Panama", "PE" = "Peru", "PH" = "Philippines",
+  "PK" = "Pakistan", "PL" = "Poland", "PT" = "Portugal", "QA" = "Qatar",
+  "RO" = "Romania", "RU" = "Russia", "SA" = "Saudi Arabia", "SE" = "Sweden",
+  "SG" = "Singapore", "SI" = "Slovenia", "SK" = "Slovakia", "SN" = "Senegal",
+  "SO" = "Somalia", "SY" = "Syria", "TH" = "Thailand", "TN" = "Tunisia",
+  "TR" = "Turkey", "TZ" = "Tanzania", "UA" = "Ukraine", "UG" = "Uganda",
+  "US" = "United States", "UY" = "Uruguay", "UZ" = "Uzbekistan", "VN" = "Vietnam",
+  "XK" = "Kosovo", "YE" = "Yemen", "ZA" = "South Africa", "ZW" = "Zimbabwe",
+  "2" = "Africa", "15" = "Northern Africa", "202" = "Sub-Saharan Africa", "14" = "Eastern Africa",
+  "17" = "Middle Africa", "18" = "Southern Africa","11" =  "Western Africa",
+  "19" = "Americas", "419" = "Latin America and the Caribbean", "29" = "Caribbean",
+  "13" ="CentralAmerica", "5" ="South America", "21" = "Northern America", "142" = "Asia",
+  "143" = "CentralAsia", "30" = "Eastern Asia", "35" = "South-eastern Asia",
+  "34" = "Southern Asia", "145" = "Western Asia", "150" = "Europe", 
+  "151" = "Eastern Europe", "154" = "Northern Europe", "39" = "Southern Europe",
+  "155" = "Western Europe", "9" = "Oceania", "53" = "Australia and New Zealand",
+  "54" ="Melanesia", "57" = "Micronesia", "61" = "Polynesia")
+  
+sum(ess_ches$cntbrthd[ess_ches$status == "first"] %in% 
+    c(2, 15, 202, 14, 17, 18, 11, 19, 419, 29, 13, 5, 21, 
+      143, 30, 35, 34, 145, 150, 151, 154, 39, 155, 9, 142,
+      53, 54, 57, 61))
+
+aaa <- ess_ches[!(ess_ches$status == "first" & 
+                        ess_ches$cntbrthd %in% c(2, 15, 202, 14, 17, 18, 11, 19, 419, 29, 13, 5, 21, 
+                                                 143, 30, 35, 34, 145, 150, 151, 154, 39, 155, 9, 
+                                                 142, 53, 54, 57, 61)), ]
+
+bbb = subset(aaa, status == "first")
+
+table(bbb$origin)
+# Define the list of EU countries
+eu_countries = c("Austria", "Belgium", "Bulgaria", "Croatia", "Cyprus", "Czechia", "Denmark", 
+                  "Estonia", "Finland", "France", "Germany", "Greece", "Hungary", "Ireland", 
+                  "Italy", "Latvia", "Lithuania", "Luxembourg", "Malta", "Netherlands", 
+                  "Poland", "Portugal", "Romania", "Slovakia", "Slovenia", "Spain", "Sweden")
+
+# Create a new column and assign 1 if origin is in the EU list, otherwise 0
+bbb$eu = ifelse(bbb$origin %in% eu_countries, 1, 0)
+table(bbb$eu)
+
+#write.csv(bbb, file = "euorigin.csv")
+
+# Apply recoding in the dataset
+ess_ches$origin <- origin_mapping[as.character(ess_ches$cntbrthd)]
+
+# Replace missing values with "Unknown"
+ess_ches$origin[is.na(ess_ches$origin)] <- "Unknown"
+
+# Check results
+sort(table(ess_ches$cntbrthd[ess_ches$status == "first"]), decreasing = TRUE)
+sort(table(ess_ches$origin[ess_ches$status == "first"]), decreasing = TRUE)
+
+```
+
+
+
+#statistics by immigrant status
+```{r}
+table(ess_ches$status)
+#status: first, second, native
+colnames(ess_ches)
+
+#age
+mean(ess_ches$age[ess_ches$status == "first"], na.rm = TRUE)
+
+#education
+median(ess_ches$education[ess_ches$status == "first"], na.rm = TRUE)
+
+```
+
+
+```{r}
+summary(ess_ches$immigrate_policy)
+hist(ess_ches$immigrate_policy)
+
+# Plotting histogram with y-axis as proportions
+hist(ess_ches$immigrate_policy, freq = FALSE, 
+     main = "Party's Position on Immigration Policy",
+     xlab = "0 = strongly liberal, 10 = strongly restrictive", ylab = "Proportion")
+
+# Calculate the mean of ess_ches$immigrate_policy
+mean_value <- mean(ess_ches$immigrate_policy, na.rm = TRUE)
+
+# Add a vertical line for the mean
+abline(v = mean_value, col = "red", lwd = 2, lty = 2)
+
+# Add text above the vertical line for the mean value
+text(mean_value, 0.1, labels = paste("Mean =", round(mean_value, 2)), pos = 4, col = "red")
+```
+
+
+#Immigrant-origin matrix
+```{r}
+cordata = imm[, c("attpol", "attimm", "lrscale", "party")]
+cormat = round(cor(cordata), 2)
+mel_cormat =melt(cormat)
+
+ggplot(data = mel_cormat, aes(x = Var1, y = Var2, fill = value)) + geom_tile()
+  get_lower_tri<-function(cormat){
+    cormat[upper.tri(cormat)] <- NA
+    return(cormat) }
+  # Get upper triangle of the correlation matrix
+  get_upper_tri <- function(cormat){
+    cormat[lower.tri(cormat)]<- NA
+    return(cormat) }
+  
+  upper_tri <- get_upper_tri(cormat)
+
+# Melt the correlation matrix
+melted_cormat <- melt(upper_tri, na.rm = TRUE)
+
+reorder_cormat <- function(cormat){
+# Use correlation between variables as distance
+dd <- as.dist((1-cormat)/2)
+hc <- hclust(dd)
+cormat <-cormat[hc$order, hc$order]
+}
+
+# Reorder the correlation matrix
+cormat <- reorder_cormat(cormat)
+upper_tri <- get_upper_tri(cormat)
+# Melt the correlation matrix
+melted_cormat <- melt(upper_tri, na.rm = TRUE)
+# Create a ggheatmap
+ggheatmap <- ggplot(melted_cormat, aes(Var2, Var1, fill = value))+
+ geom_tile(color = "white")+
+ scale_fill_gradient2(low = "blue", high = "red", mid = "white", 
+   midpoint = 0, limit = c(-1,1), space = "Lab", 
+    name="Pearson\nCorrelation") +
+  theme_minimal()+ # minimal theme
+ theme(axis.text.x = element_text(angle = 45, vjust = 1, 
+    size = 12, hjust = 1))+
+ coord_fixed()
+
+# Print the heatmap
+print(ggheatmap)
+
+imm_cor = ggheatmap + 
+geom_text(aes(Var2, Var1, label = value), color = "black", size = 4) +
+theme(
+  axis.title.x = element_blank(),
+  axis.title.y = element_blank(),
+  panel.grid.major = element_blank(),
+  panel.border = element_blank(),
+  panel.background = element_blank(),
+  axis.ticks = element_blank(),
+  legend.justification = c(1, 0),
+  legend.position = "right",
+  legend.direction = "vertical")+ 
+  labs(title = "Immigration-Origin Voters") + 
+  guides(fill = guide_colorbar(barwidth = 1, barheight = 7,
+                title.position = "top", title.hjust = 0.5))
+
+#ggsave("imm_cor.png", imm_cor, width = 6, height = 4, dpi = 300)
+```
+
+#native matrix
+```{r}
+cordata = nat[, c("attpol", "attimm", "lrscale", "party")]
+cormat = round(cor(cordata), 2)
+mel_cormat =melt(cormat)
+
+ggplot(data = mel_cormat, aes(x = Var1, y = Var2, fill = value)) + geom_tile()
+  get_lower_tri<-function(cormat){
+    cormat[upper.tri(cormat)] <- NA
+    return(cormat) }
+  # Get upper triangle of the correlation matrix
+  get_upper_tri <- function(cormat){
+    cormat[lower.tri(cormat)]<- NA
+    return(cormat) }
+  
+  upper_tri <- get_upper_tri(cormat)
+
+# Melt the correlation matrix
+melted_cormat <- melt(upper_tri, na.rm = TRUE)
+
+reorder_cormat <- function(cormat){
+# Use correlation between variables as distance
+dd <- as.dist((1-cormat)/2)
+hc <- hclust(dd)
+cormat <-cormat[hc$order, hc$order]
+}
+
+# Reorder the correlation matrix
+cormat <- reorder_cormat(cormat)
+upper_tri <- get_upper_tri(cormat)
+# Melt the correlation matrix
+melted_cormat <- melt(upper_tri, na.rm = TRUE)
+# Create a ggheatmap
+ggheatmap <- ggplot(melted_cormat, aes(Var2, Var1, fill = value))+
+ geom_tile(color = "white")+
+ scale_fill_gradient2(low = "blue", high = "red", mid = "white", 
+   midpoint = 0, limit = c(-1,1), space = "Lab", 
+    name="Pearson\nCorrelation") +
+  theme_minimal()+ # minimal theme
+ theme(axis.text.x = element_text(angle = 45, vjust = 1, 
+    size = 12, hjust = 1))+
+ coord_fixed()
+
+# Print the heatmap
+print(ggheatmap)
+
+nat_cor = ggheatmap + 
+geom_text(aes(Var2, Var1, label = value), color = "black", size = 4) +
+theme(
+  axis.title.x = element_blank(),
+  axis.title.y = element_blank(),
+  panel.grid.major = element_blank(),
+  panel.border = element_blank(),
+  panel.background = element_blank(),
+  axis.ticks = element_blank(),
+  legend.justification = c(1, 0),
+  legend.position = "right",
+  legend.direction = "vertical")+   labs(title = "Native-Origin Voters") + 
+  guides(fill = guide_colorbar(barwidth = 1, barheight = 7,
+                title.position = "top", title.hjust = 0.5))
+
+ggsave("nat_cor.png", nat_cor, width = 6, height = 4, dpi = 300)
+```
+
+```{r}
+mean(nat$attimm); mean(imm$attimm)
+mean(nat$attpol); mean(imm$attpol)
+summary(nat$attimm); summary(imm$attimm); summary(imm1$attimm)
+summary(nat$attpol); summary(imm$attpol); summary(imm1$attpol)
+summary(nat$party); summary(imm$party); summary(imm1$party)
+
+t.test(nat$attimm, imm$attimm)
+t.test(imm1$attimm, imm$attimm)
+t.test(nat$attpol, imm$attpol)
+t.test(imm1$attpol, imm$attpol)
+
+table(nat$party)
+table(imm$party)
+```
+
+
+
+```{r}
+#install.packages("plm")
+library(plm)
+model1 = plm(party ~ attpol + attimm + attpol*lrscale + attimm*lrscale + age + gender + religion +education + status, 
+        weights = anweight, index = "cntry", model = "within", data = imm)
+summary(model1)
+
+model2 = lm(party ~ attpol + attimm + attpol*lrscale + attimm*lrscale + age + gender + religion +education + status +
+              factor(cntry) - 1, data = imm, weights = anweight)
+summary(model2)
+
+#https://www.theanalysisfactor.com/3-tips-interpreting-moderation/ 
+```
+
+
+```{r}
+cor(imm$attpol, imm$attimm, use = "complete.obs")
+cor(imm$attpol, imm$lrscale)
+cor(imm$attim, imm$lrscale)
+hist(imm$attpol)
+
+hist(imm$attimm[imm$status == 0])
+hist(imm$attimm[imm$status == 1])
+
+hist(imm$lrscale[imm$status == 0])
+hist(imm$lrscale[imm$status == 1])
+
+mean(imm$lrscale[imm$status == 0])
+sd(imm$lrscale[imm$status == 0])
+mean(imm$lrscale[imm$status == 1])
+sd(imm$lrscale[imm$status == 1])
+
+mean(imm$attpol[imm$status == 0])
+sd(imm$attpol[imm$status == 0])
+mean(imm$attpol[imm$status == 1])
+sd(imm$attpol[imm$status == 1])
+
+mean(imm$attimm[imm$status == 0])
+sd(imm$attimm[imm$status == 0])
+mean(imm$attimm[imm$status == 1])
+sd(imm$attimm[imm$status == 1])
+```
+
+```{r}
+table(imm$lrscale)
+table(imm$imsmetn)
+table(imm$imdfetn)
+table(imm$impcntr)
+table(imm$imbgeco)
+table(imm$imueclt)
+table(imm$education)
+?range
+```
+
+
+
+```{r eval=FALSE, include=FALSE}
+#general
+## imsmetn - Allow many/few immigrants of same race/ethnic group as  
+## imdfetn - Allow many/few immigrants of d ... ace/ethnic group from majority
+imm$general = NA
+range(imm$imsmetn, na.rm= TRUE); range(imm$imdfetn, na.rm= TRUE)
+imm$general = 1/8*(imm$imsmetn + imm$imdfetn)
+range(imm$general, na.rm = TRUE)
+
+#economic threat
+## impcntr - Allow many/few immigrants from poorer countries outside Europe 
+## imbgeco - Immigration bad or good for country's economy (1-10, 77 = refusal, 88 = DK, 99 = No answer) - economic threat
+range(imm$impcntr, na.rm= TRUE); range(imm$imbgeco, na.rm= TRUE)
+imm$econ = 1/2*(1/4*(imm$impcntr) + 1/10*(imm$imbgeco))
+range(imm$econ, na.rm= TRUE)
+
+#cultural threat
+
+## imueclt - Country's cultural life undermined or enriched by immigrants (1-10, 77 = refusal, 88 = DK, 99 = No answer)
+## imwbcnt - Immigrants make country worse or better place to live (1-10, 77 = refusal, 88 = DK, 99 = No answer)
+imm$cultu = NA
+range(imm$imueclt, na.rm= TRUE); range(imm$imwbcnt, na.rm= TRUE)
+imm$cultu = 1/20*(imm$imueclt + imm$imwbcnt)
+range(imm$cultu, na.rm= TRUE)
+
+table(imm$cntry)
+range(imm$lrscale)
+```
+
+```{r}
+mean(imm$attimm)
+range(imm$attimm)
+sd(imm$attimm)
+mean(imm$attpol)
+range(imm$attpol)
+sd(imm$attpol)
+mean(imm$lrscale)
+range(imm$lrscale)
+sd(imm$lrscale)
+
+mean(imm$age)
+range(imm$age)
+sd(imm$age)
+
+mean(imm$education)
+range(imm$education)
+sd(imm$education)
+
+hist(imm$education)
+```
+
+```{r}
+table(imm$cntry)
+```
+
+
+```{r sense of belonging comparison by group}
+sobaverage = data.frame(
+  Country = c("Austria", "Belgium", "Bulgaria", "Cyprus", "Czechia", "Germany", "Denmark", "Estonia", "Spain", "Finland", "France", "UK", "Croatia", "Ireland", "Italy", "Lithuania", "Latvia", "Netherlands", "Poland", "Portugal", "Sweden", "Slovenia", "Slovakia", "Overall"),
+
+attitudes1 = c(
+    mean(imm$attimm[imm$cntry == "AT"]),
+    mean(imm$attimm[imm$cntry == "BE"]),
+    mean(imm$attimm[imm$cntry == "BG"]),
+    mean(imm$attimm[imm$cntry == "CY"]),
+    mean(imm$attimm[imm$cntry == "CZ"]),
+    mean(imm$attimm[imm$cntry == "DE"]),
+    mean(imm$attimm[imm$cntry == "DK"]),
+    mean(imm$attimm[imm$cntry == "EE"]),
+    mean(imm$attimm[imm$cntry == "ES"]),
+    mean(imm$attimm[imm$cntry == "FI"]),
+    mean(imm$attimm[imm$cntry == "FR"]),
+    mean(imm$attimm[imm$cntry == "GB"]),
+    mean(imm$attimm[imm$cntry == "HR"]),
+    mean(imm$attimm[imm$cntry == "IE"]),
+    mean(imm$attimm[imm$cntry == "IT"]),
+    mean(imm$attimm[imm$cntry == "LT"]),
+    mean(imm$attimm[imm$cntry == "LV"]),
+    mean(imm$attimm[imm$cntry == "NL"]),
+    mean(imm$attimm[imm$cntry == "PL"]),
+    mean(imm$attimm[imm$cntry == "PT"]),
+    mean(imm$attimm[imm$cntry == "SE"]),
+    mean(imm$attimm[imm$cntry == "SI"]),
+    mean(imm$attimm[imm$cntry == "SK"]),
+    mean(imm$attimm)),
+    
+  attitudes2= c(
+    mean(imm$attpol[imm$cntry == "AT"]),
+    mean(imm$attpol[imm$cntry == "BE"]),
+    mean(imm$attpol[imm$cntry == "BG"]),
+    mean(imm$attpol[imm$cntry == "CY"]),
+    mean(imm$attpol[imm$cntry == "CZ"]),
+    mean(imm$attpol[imm$cntry == "DE"]),
+    mean(imm$attpol[imm$cntry == "DK"]),
+    mean(imm$attpol[imm$cntry == "EE"]),
+    mean(imm$attpol[imm$cntry == "ES"]),
+    mean(imm$attpol[imm$cntry == "FI"]),
+    mean(imm$attpol[imm$cntry == "FR"]),
+    mean(imm$attpol[imm$cntry == "GB"]),
+    mean(imm$attpol[imm$cntry == "HR"]),
+    mean(imm$attpol[imm$cntry == "IE"]),
+    mean(imm$attpol[imm$cntry == "IT"]),
+    mean(imm$attpol[imm$cntry == "LT"]),
+    mean(imm$attpol[imm$cntry == "LV"]),
+    mean(imm$attpol[imm$cntry == "NL"]),
+    mean(imm$attpol[imm$cntry == "PL"]),
+    mean(imm$attpol[imm$cntry == "PT"]),
+    mean(imm$attpol[imm$cntry == "SE"]),
+    mean(imm$attpol[imm$cntry == "SI"]),
+    mean(imm$attpol[imm$cntry == "SK"]),
+    mean(imm$attpol)),
+
+ideologies = c(
+    mean(imm$lrscale[imm$cntry == "AT"]),
+    mean(imm$lrscale[imm$cntry == "BE"]),
+    mean(imm$lrscale[imm$cntry == "BG"]),
+    mean(imm$lrscale[imm$cntry == "CY"]),
+    mean(imm$lrscale[imm$cntry == "CZ"]),
+    mean(imm$lrscale[imm$cntry == "DE"]),
+    mean(imm$lrscale[imm$cntry == "DK"]),
+    mean(imm$lrscale[imm$cntry == "EE"]),
+    mean(imm$lrscale[imm$cntry == "ES"]),
+    mean(imm$lrscale[imm$cntry == "FI"]),
+    mean(imm$lrscale[imm$cntry == "FR"]),
+    mean(imm$lrscale[imm$cntry == "GB"]),
+    mean(imm$lrscale[imm$cntry == "HR"]),
+    mean(imm$lrscale[imm$cntry == "IE"]),
+    mean(imm$lrscale[imm$cntry == "IT"]),
+    mean(imm$lrscale[imm$cntry == "LT"]),
+    mean(imm$lrscale[imm$cntry == "LV"]),
+    mean(imm$lrscale[imm$cntry == "NL"]),
+    mean(imm$lrscale[imm$cntry == "PL"]),
+    mean(imm$lrscale[imm$cntry == "PT"]),
+    mean(imm$lrscale[imm$cntry == "SE"]),
+    mean(imm$lrscale[imm$cntry == "SI"]),
+    mean(imm$lrscale[imm$cntry == "SK"]),
+    mean(imm$lrscale)))
+
+sobaverage 
+xtable(sobaverage)
+```
+
+
+

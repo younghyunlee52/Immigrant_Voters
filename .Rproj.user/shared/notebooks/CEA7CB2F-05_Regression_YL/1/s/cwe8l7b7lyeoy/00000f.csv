@@ -1,0 +1,20 @@
+"0","# outcome = lrgen"
+"0","library(plm)"
+"2","
+Attaching package: ‘plm’
+
+"
+"2","The following objects are masked from ‘package:dplyr’:
+
+    between, lag, lead
+
+"
+"0","h1fit1 = lm(lrgen~lrscale, data=ess_ches)"
+"0","h1fit2= lm(lrgen~lrscale + age+gender+Christian + Muslim +education, data=ess_ches)"
+"0","h1fit3 = plm(lrgen~lrscale + age+gender+Christian + Muslim +education, data=ess_ches, "
+"0","              model=""within"", index=c(""country"",""year""))"
+"0","h1fit4 = lm(lrgen~lrscale + age+gender+Christian + Muslim +education + country + factor(year),"
+"0","             data=ess_ches)"
+"2","Error in `contrasts<-`(`*tmp*`, value = contr.funs[1 + isOF[nn]]) : 
+  contrasts can be applied only to factors with 2 or more levels
+"

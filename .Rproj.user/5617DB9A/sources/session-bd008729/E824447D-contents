@@ -1,0 +1,74 @@
+---
+title: "Immigrant voters"
+output: html_document
+date: "2022-10-08"
+---
+#Relevant Datasets
+- https://ess-search.nsd.no/en/study/bdc7c350-1029-4cb3-9d5e-53f668b8fa74
+- https://static1.squarespace.com/static/5975c9bfdb29d6a05c65209b/t/62e9612a9090ba609c4b8693/1659461930880/1999-2019_CHES_codebook.pd
+
+#packages
+```{r}
+library(readr)
+library(base)
+library(here)
+library(dplyr)
+library(xtable)
+library(stargazer)
+```
+
+#loading data
+```{r}
+ches = read.csv(here::here("data", "ches1419.csv"))
+ches = ches[ches$year == 2019, ]
+ess9 = read.csv(here::here("data", "ess9_ches.csv"))
+ess10 = read.csv(here::here("data", "ess10_ches.csv"))
+ess = rbind(ess9, ess10)
+
+table(ess$status)
+table(ess10$feethngr, ess10$status, useNA = "always")
+table(ess9$livecnta)
+```
+
+#data structure and merge
+```{r}
+ess = ess[ , c("party", "country", "essround", "idno", 
+               "dweight", "anweight", "pweight", "lrscale",
+                 "status", "age", "gender", "vote",
+                 "religion", "education", "impol1", "impol2",
+                  "impol3", "imbgeco", "imueclt", "imwbcnt", "stfdem" ,
+               "dscrgrp", "dscrrce", "dscrntn", "dscrrlg", "dscretn", 
+               "feethngr", "livecnta", "cntbrthd")]
+
+#for some reasons, they don't match jobbik.
+unique(ess$party[ess$country == "HU"])
+unique(ches$party[ches$country == "HU"])
+ess$party[ess$party == "Jobbik" & ess$country == "HU"] = "JOBBIK"
+
+ches = rename(ches, voteshare = vote)
+ess_ches = merge(ess, ches, by = c("party", "country"), all.x = TRUE)
+ess_ches = subset(ess_ches, !is.na(party) & party != "")
+ess_ches = subset(ess_ches, !is.na(immigrate_policy))
+length(table(ess_ches$party))
+#write.csv(ess_ches,"D:/GitHub/voters_immigration/data/ess_ches.csv", row.names = FALSE)
+#write.csv(ess_ches, file = here("data", "ess_ches.csv"), row.names = FALSE)
+```
+
+```{r} 
+#find unmatched parties
+unmatched_parties = ess[!(ess$party %in% ches$party), c("party", "country")]
+unmatched_parties$count = ave(unmatched_parties$party, unmatched_parties$party, unmatched_parties$country, FUN = length)
+unique_unmatched = unique(unmatched_parties)
+unique_unmatched$count = as.numeric(unique_unmatched$count)
+
+unique_parties= unique_unmatched %>% arrange(desc(count))
+print(unique_parties)
+```
+
+```{r}
+write.csv(ess_ches, file = here("data", "ess_ches.csv"), row.names = FALSE)
+```
+
+
+
+
